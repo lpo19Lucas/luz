@@ -71,6 +71,13 @@ export async function POST(
           create: { salonId: salon.id, name: body.clientName, phone: body.clientPhone },
         });
 
+        // Dispara os jobs de WhatsApp (spec seção 8.5/8.6) — a fila de verdade
+        // é a tabela whatsapp_message_jobs, consumida pelo cron (ver
+        // /api/cron/whatsapp-jobs). Aqui só agendamos os horários de envio.
+        const presenceCfg = await tx.presenceConfirmationConfig.findUnique({
+          where: { salonId: salon.id },
+        });
+
         const created = await tx.appointment.create({
           data: {
             salonId: salon.id,
@@ -79,16 +86,12 @@ export async function POST(
             clientId: client.id,
             startAt,
             endAt,
-            status: "CONFIRMED",
+            // Se a confirmação de presença está habilitada, o agendamento só
+            // vira CONFIRMED quando o cliente confirmar via link (spec 8.6);
+            // caso contrário, já nasce confirmado.
+            status: presenceCfg?.enabled ? "AWAITING_CONFIRMATION" : "CONFIRMED",
             paidSelfReported: body.wantsToPayNow,
           },
-        });
-
-        // Dispara os jobs de WhatsApp (spec seção 8.5/8.6) — a fila de verdade
-        // é a tabela whatsapp_message_jobs, consumida pelo cron (ver
-        // /api/cron/whatsapp-jobs). Aqui só agendamos os horários de envio.
-        const presenceCfg = await tx.presenceConfirmationConfig.findUnique({
-          where: { salonId: salon.id },
         });
 
         await tx.whatsAppMessageJob.create({

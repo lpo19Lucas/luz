@@ -11,6 +11,9 @@ import bcrypt from "bcryptjs";
 const SESSION_COOKIE = "session";
 const SESSION_DURATION_SECONDS = 30 * 24 * 60 * 60; // 30 dias
 
+const ADMIN_SESSION_COOKIE = "admin_session";
+const ADMIN_SESSION_DURATION_SECONDS = 12 * 60 * 60; // 12 horas — sessão de admin dura menos
+
 function getSecret() {
   const secret = process.env.SESSION_SECRET;
   if (!secret) {
@@ -60,5 +63,46 @@ export async function getSession(): Promise<{ userId: string } | null> {
     return { userId: payload.userId };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Sessão da tela de administração da plataforma (/admin — item 4 das
+ * pendências: conciliação manual de assinatura). Sem User próprio: é uma
+ * senha única compartilhada (`ADMIN_PASSWORD`), suficiente pro volume de
+ * quem opera a plataforma hoje (só o próprio dono do produto).
+ */
+export async function createAdminSession() {
+  const token = await new SignJWT({ admin: true })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime(`${ADMIN_SESSION_DURATION_SECONDS}s`)
+    .sign(getSecret());
+
+  const cookieStore = await cookies();
+  cookieStore.set(ADMIN_SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: ADMIN_SESSION_DURATION_SECONDS,
+  });
+}
+
+export async function destroyAdminSession() {
+  const cookieStore = await cookies();
+  cookieStore.delete(ADMIN_SESSION_COOKIE);
+}
+
+export async function getAdminSession(): Promise<boolean> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+  if (!token) return false;
+
+  try {
+    const { payload } = await jwtVerify(token, getSecret());
+    return payload.admin === true;
+  } catch {
+    return false;
   }
 }

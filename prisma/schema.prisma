@@ -198,6 +198,15 @@ model Appointment {
   paidSelfReported     Boolean @default(false) // cliente marcou "já paguei"
   paidConfirmedByOwner Boolean @default(false) // dono conferiu de verdade
 
+  // Marca que a rotina de no-show (cron) já processou este agendamento —
+  // evita reprocessar a cada execução. Null = ainda não passou pela checagem
+  // ou não se aplica (confirmação de presença desabilitada / já confirmado).
+  noShowHandledAt DateTime?
+
+  // Quantas vezes esse agendamento já foi reagendado — histórico simples,
+  // sem tabela própria (spec: reagendar preserva o mesmo token/link).
+  rescheduledCount Int @default(0)
+
   createdAt DateTime @default(now())
 
   whatsappJobs WhatsAppMessageJob[]
@@ -205,6 +214,7 @@ model Appointment {
   @@index([salonId])
   @@index([professionalId, startAt]) // consulta de overlap / agenda do dia
   @@index([accessToken])
+  @@index([status, startAt]) // consulta do cron de no-show
   @@map("appointments")
 }
 

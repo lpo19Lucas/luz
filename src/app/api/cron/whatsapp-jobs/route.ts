@@ -1,24 +1,35 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 
 /**
  * GET /api/cron/whatsapp-jobs
  *
  * "Fila" de WhatsApp — ver arquitetura-modelo-de-dados.md, seção 4.
  * Chamado por um cron externo (Vercel Cron ou similar) a cada poucos
- * minutos. Busca jobs PENDING vencidos e envia.
+ * minutos. Busca jobs PENDING vencidos e envia, e também roda a checagem
+ * de no-show (ver `handleNoShows` abaixo).
  *
- * Proteger com um segredo (header ou query param) antes de expor em
- * produção — Vercel Cron manda um header `Authorization: Bearer <secret>`
- * configurável; validar isso aqui é TODO antes do deploy real.
- *
- * TODO (não implementado neste scaffold): a segunda metade da confirmação
- * de presença — quando um job PRESENCE_CHECK foi enviado e o prazo do
- * agendamento chegou sem o cliente confirmar, alguém precisa checar
- * PresenceConfirmationConfig.actionOnNoConfirm e agir (alertar o dono, ou
- * liberar o horário). Esse é outro job/rotina, ainda não escrito aqui.
+ * Protegido por segredo: exige `Authorization: Bearer <CRON_SECRET>` quando
+ * a env var `CRON_SECRET` está configurada. Vercel Cron manda esse header
+ * automaticamente quando `CRON_SECRET` está setada no projeto.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    const authHeader = req.headers.get("authorization");
+    if (authHeader !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+  }
+
+  const messageResult = await processWhatsAppJobs();
+  const noShowResult = await handleNoShows();
+
+  return NextResponse.json({ ...messageResult, ...noShowResult });
+}
+
+async function processWhatsAppJobs() {
   const pendingJobs = await prisma.whatsAppMessageJob.findMany({
     where: { status: "PENDING", scheduledFor: { lte: new Date() } },
     include: {
@@ -54,7 +65,62 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ processed: pendingJobs.length, failed });
+  return { processed: pendingJobs.length, failed };
+}
+
+/**
+ * Segunda metade da confirmação de presença (spec P0.10): quando o prazo
+ * configurado (`hoursBefore` antes do horário) passa sem o cliente confirmar
+ * presença, age de acordo com `PresenceConfirmationConfig.actionOnNoConfirm`:
+ *  - RELEASE_SLOT: cancela o agendamento de verdade, liberando o horário, e
+ *    cancela os jobs de WhatsApp PENDING que ainda restavam.
+ *  - ALERT_ONLY: não mexe no status (o dono ainda pode confirmar manualmente
+ *    com o cliente) — só marca `noShowHandledAt` pra a Agenda exibir o alerta
+ *    pro dono. Sem WhatsApp real ainda, o "alerta" é essa sinalização visual.
+ *
+ * `noShowHandledAt` evita reprocessar o mesmo agendamento a cada execução.
+ */
+async function handleNoShows() {
+  const now = new Date();
+
+  const candidates = await prisma.appointment.findMany({
+    where: {
+      status: "AWAITING_CONFIRMATION",
+      noShowHandledAt: null,
+      salon: { presenceConfirmationCfg: { enabled: true } },
+    },
+    include: { salon: { include: { presenceConfirmationCfg: true } } },
+  });
+
+  const overdue = candidates.filter((appt) => {
+    const hoursBefore = appt.salon.presenceConfirmationCfg?.hoursBefore ?? 24;
+    const deadline = new Date(appt.startAt.getTime() - hoursBefore * 60 * 60_000);
+    return now >= deadline;
+  });
+
+  let released = 0;
+  let alerted = 0;
+
+  for (const appt of overdue) {
+    const action = appt.salon.presenceConfirmationCfg?.actionOnNoConfirm ?? "ALERT_ONLY";
+
+    if (action === "RELEASE_SLOT") {
+      await prisma.appointment.update({
+        where: { id: appt.id },
+        data: { status: "CANCELLED", noShowHandledAt: now },
+      });
+      await cancelPendingWhatsAppJobs(appt.id);
+      released += 1;
+    } else {
+      await prisma.appointment.update({
+        where: { id: appt.id },
+        data: { noShowHandledAt: now },
+      });
+      alerted += 1;
+    }
+  }
+
+  return { noShowReleased: released, noShowAlerted: alerted };
 }
 
 async function sendWhatsAppMessage(

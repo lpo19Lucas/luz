@@ -51,6 +51,9 @@ services:
       TZ: "America/Sao_Paulo"
       # Valor de dev only — trocar por algo aleatório de verdade em produção.
       SESSION_SECRET: "dev-secret-troque-em-producao-0123456789"
+      # Idem — protege /api/cron/whatsapp-jobs e a tela /admin.
+      CRON_SECRET: "dev-cron-secret-troque-em-producao"
+      ADMIN_PASSWORD: "dev-admin-troque-em-producao"
       # Bind mount + Docker Desktop no Windows não propaga eventos de arquivo
       # pro inotify do Linux de forma confiável — sem isso, o hot-reload do
       # Next.js às vezes simplesmente para de detectar mudanças (fica servindo

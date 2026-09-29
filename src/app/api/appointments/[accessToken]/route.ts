@@ -28,8 +28,11 @@ export async function GET(
     endAt: appointment.endAt.toISOString(),
     salonName: appointment.salon.name,
     salonSlug: appointment.salon.slug,
+    professionalId: appointment.professionalId,
     professionalName: appointment.professional.name,
+    serviceId: appointment.serviceId,
     serviceName: appointment.service.name,
     clientName: appointment.client.name,
+    rescheduledCount: appointment.rescheduledCount,
   });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 
 /**
  * POST /api/appointments/:accessToken/cancel
@@ -29,9 +30,7 @@ export async function POST(
     data: { status: "CANCELLED" },
   });
 
-  // TODO: cancelar os jobs de WhatsApp PENDING desse agendamento (REMINDER,
-  // PRESENCE_CHECK) — não faz sentido lembrar/pedir confirmação de um
-  // horário cancelado. Fica pra quando a fila estiver implementada de verdade.
+  await cancelPendingWhatsAppJobs(appointment.id);
 
   return NextResponse.json({ ok: true });
 }

@@ -128,7 +128,7 @@ export default async function AssinaturaPage() {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
           Não há cobrança automática. Faça o PIX para a chave abaixo e aguarde a confirmação
-          manual — o status muda para "Ativa" depois que a equipe da plataforma conferir o
+          manual — o status muda para &ldquo;Ativa&rdquo; depois que a equipe da plataforma conferir o
           pagamento.
         </Typography>
         <Paper variant="outlined" sx={{ p: 1.5, fontFamily: "monospace", fontSize: 14, bgcolor: "grey.50" }}>

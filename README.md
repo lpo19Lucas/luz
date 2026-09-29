@@ -64,11 +64,13 @@ Todas as páginas em `src/app/(public)` e `src/app/(dashboard)` — cada arquivo
 
 ## O que falta antes de rodar em produção (não é escopo desse scaffold)
 
-- Autenticação do dono (login/senha) — nenhuma lib escolhida ainda (NextAuth é o candidato óbvio com Next.js).
-- Integração real com WhatsApp (Meta Cloud API) — hoje é só log.
-- A segunda metade da confirmação de presença: quando o prazo passa sem confirmação, checar `PresenceConfirmationConfig.actionOnNoConfirm` e agir. Só o envio do pedido de confirmação está implementado.
-- Proteção do endpoint de cron com segredo antes de expor publicamente.
-- Tela de conciliação manual da assinatura (spec seção 9) — hoje `Subscription.status` só muda via acesso direto ao banco.
+- ~~Autenticação do dono~~ — implementada (`src/lib/auth.ts`, cookie JWT).
+- Integração real com WhatsApp (Meta Cloud API) — hoje é só log. Maior pendência real do MVP (ver `STATUS-DO-PROJETO.md`).
+- ~~A segunda metade da confirmação de presença~~ — implementada: `handleNoShows` em `src/app/api/cron/whatsapp-jobs/route.ts` checa `PresenceConfirmationConfig.actionOnNoConfirm` e age (cancela ou sinaliza no dashboard).
+- ~~Proteção do endpoint de cron~~ — implementada via `CRON_SECRET` (ver `.env.example`).
+- ~~Tela de conciliação manual da assinatura~~ — implementada em `/admin` (protegida por `ADMIN_PASSWORD`, ver `.env.example`).
+
+Ver `STATUS-DO-PROJETO.md` (na raiz do projeto, fora de `app/`) para o status completo e atualizado — este README documenta principalmente a estrutura do scaffold original.
 
 ## Estrutura de rotas
 

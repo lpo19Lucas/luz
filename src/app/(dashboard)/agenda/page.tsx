@@ -120,12 +120,20 @@ export default async function AgendaPage({
                   <Typography variant="caption" color="text.secondary" display="block">
                     {appt.client.name}
                   </Typography>
-                  <Chip
-                    label={STATUS_LABEL[appt.status]}
-                    color={STATUS_COLOR[appt.status]}
-                    size="small"
-                    sx={{ mt: 0.5 }}
-                  />
+                  <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.5 }}>
+                    <Chip
+                      label={STATUS_LABEL[appt.status]}
+                      color={STATUS_COLOR[appt.status]}
+                      size="small"
+                    />
+                    {appt.status === "AWAITING_CONFIRMATION" && appt.noShowHandledAt && (
+                      <Chip
+                        label="Cliente não confirmou — ligue ou cancele"
+                        color="error"
+                        size="small"
+                      />
+                    )}
+                  </Stack>
                 </Box>
               ))}
             </Stack>
