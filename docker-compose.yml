@@ -1,0 +1,72 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: barbearia
+      POSTGRES_PASSWORD: barbearia
+      POSTGRES_DB: barbearia
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barbearia"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Banco isolado para os testes de integração (Jest) — nunca compartilhar com o
+  # postgres de dev, os testes fazem reset de dados entre suites.
+  postgres_test:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: barbearia_test
+      POSTGRES_PASSWORD: barbearia_test
+      POSTGRES_DB: barbearia_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barbearia_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://barbearia:barbearia@postgres:5432/barbearia?schema=public"
+      TEST_DATABASE_URL: "postgresql://barbearia_test:barbearia_test@postgres_test:5432/barbearia_test?schema=public"
+      NODE_ENV: development
+      # Sem campo de timezone no schema — o produto assume horário de Brasília
+      # (mercado-alvo). Sem isso, "09:00" de disponibilidade é interpretado em
+      # UTC pelo container e sai errado ao ser exibido no timezone do cliente.
+      TZ: "America/Sao_Paulo"
+      # Valor de dev only — trocar por algo aleatório de verdade em produção.
+      SESSION_SECRET: "dev-secret-troque-em-producao-0123456789"
+      # Bind mount + Docker Desktop no Windows não propaga eventos de arquivo
+      # pro inotify do Linux de forma confiável — sem isso, o hot-reload do
+      # Next.js às vezes simplesmente para de detectar mudanças (fica servindo
+      # a versão antiga do arquivo, silenciosamente, sem erro nenhum).
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - app_node_modules:/app/node_modules
+      - app_next:/app/.next
+    command: sh -c "npx prisma generate && npx prisma migrate dev --name init && npm run dev"
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  app_node_modules:
+  app_next:

@@ -1,0 +1,301 @@
+// ============================================================
+// Schema Prisma — MVP Barbearia (Plataforma de Agendamento)
+// Stack: PostgreSQL + Prisma
+// Ver arquitetura-modelo-de-dados.md para as decisões por trás
+// deste schema, e spec-funcional-mvp-barbearia.md para o escopo.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------
+// Autenticação / dono do salão
+// ------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  salons Salon[]
+
+  @@map("users")
+}
+
+// ------------------------------------------------------------
+// Salão (tenant)
+// ------------------------------------------------------------
+
+model Salon {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique // usado na URL pública de agendamento
+  createdAt DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  // Chave/QR PIX do próprio salão — usada para o cliente pagar o serviço (opcional).
+  // Ver spec seção 8.8: sem gateway, sem confirmação automática.
+  pixKey      String?
+  pixQrCodeUrl String?
+
+  professionals Professional[]
+  services      Service[]
+  clients       Client[]
+  appointments  Appointment[]
+
+  subscription            Subscription?
+  presenceConfirmationCfg PresenceConfirmationConfig?
+
+  @@map("salons")
+}
+
+// ------------------------------------------------------------
+// Profissional
+// ------------------------------------------------------------
+
+enum ProfessionalCategory {
+  BARBER // único valor ativo no MVP — campo pronto para HAIRDRESSER, MANICURIST etc (Fase 2)
+}
+
+model Professional {
+  id       String               @id @default(cuid())
+  salonId  String
+  salon    Salon                @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  name     String
+  category ProfessionalCategory @default(BARBER)
+  photoUrl String?
+  active   Boolean              @default(true)
+
+  services      ServiceProfessional[]
+  availability  Availability[]
+  exceptions    AvailabilityException[]
+  appointments  Appointment[]
+
+  @@index([salonId])
+  @@map("professionals")
+}
+
+// Disponibilidade recorrente semanal (P0.3)
+model Availability {
+  id             String       @id @default(cuid())
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  weekday        Int          // 0 = domingo ... 6 = sábado
+  startTime      String       // "09:00" — armazenado como texto simples (HH:mm), suficiente pro MVP
+  endTime        String       // "19:00"
+
+  @@index([professionalId])
+  @@map("availabilities")
+}
+
+// Bloqueio pontual — folga, feriado (P0.18)
+model AvailabilityException {
+  id             String       @id @default(cuid())
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  date           DateTime     @db.Date
+  startTime      String?      // null = bloqueia o dia inteiro
+  endTime        String?
+  reason         String?
+
+  @@index([professionalId, date])
+  @@map("availability_exceptions")
+}
+
+// ------------------------------------------------------------
+// Serviço
+// ------------------------------------------------------------
+
+model Service {
+  id              String  @id @default(cuid())
+  salonId         String
+  salon           Salon   @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  name            String
+  durationMinutes Int
+  priceCents      Int
+
+  professionals ServiceProfessional[]
+  appointments  Appointment[]
+
+  @@index([salonId])
+  @@map("services")
+}
+
+// Relação N-N: quais profissionais realizam quais serviços
+model ServiceProfessional {
+  serviceId      String
+  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@id([serviceId, professionalId])
+  @@map("service_professionals")
+}
+
+// ------------------------------------------------------------
+// Cliente (sem login — nome + telefone, por salão)
+// ------------------------------------------------------------
+
+model Client {
+  id        String   @id @default(cuid())
+  salonId   String
+  salon     Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  createdAt DateTime @default(now())
+
+  appointments Appointment[]
+
+  @@unique([salonId, phone]) // mesmo telefone = mesmo cliente dentro do salão
+  @@map("clients")
+}
+
+// ------------------------------------------------------------
+// Agendamento — entidade central
+// ------------------------------------------------------------
+
+enum AppointmentStatus {
+  AWAITING_CONFIRMATION // aguardando confirmação de presença (se habilitada)
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model Appointment {
+  id      String @id @default(cuid())
+  salonId String
+  salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  professionalId String
+  professional   Professional @relation(fields: [professionalId], references: [id])
+  serviceId      String
+  service        Service      @relation(fields: [serviceId], references: [id])
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id])
+
+  startAt DateTime
+  endAt   DateTime // startAt + service.durationMinutes, gravado explícito para facilitar query de overlap
+
+  status AppointmentStatus @default(CONFIRMED)
+
+  // Token único usado em todo link enviado por WhatsApp: cancelar, reagendar,
+  // confirmar presença (spec seção 8.6/8.7) — é o substituto do login do cliente.
+  accessToken String @unique @default(cuid())
+
+  // Pagamento do serviço — sem gateway (spec seção 8.8). Dois flags independentes,
+  // nunca um confirma o outro automaticamente.
+  paidSelfReported     Boolean @default(false) // cliente marcou "já paguei"
+  paidConfirmedByOwner Boolean @default(false) // dono conferiu de verdade
+
+  createdAt DateTime @default(now())
+
+  whatsappJobs WhatsAppMessageJob[]
+
+  @@index([salonId])
+  @@index([professionalId, startAt]) // consulta de overlap / agenda do dia
+  @@index([accessToken])
+  @@map("appointments")
+}
+
+// ------------------------------------------------------------
+// Confirmação de presença — configuração por salão (P0.10)
+// ------------------------------------------------------------
+
+enum NoConfirmAction {
+  ALERT_ONLY
+  RELEASE_SLOT
+}
+
+model PresenceConfirmationConfig {
+  id      String @id @default(cuid())
+  salonId String @unique
+  salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  enabled           Boolean         @default(true) // default resolvido na spec: habilitado
+  hoursBefore       Int             @default(24)   // default resolvido na spec: 24h antes
+  actionOnNoConfirm NoConfirmAction @default(ALERT_ONLY) // default: só alerta, não libera
+
+  @@map("presence_confirmation_configs")
+}
+
+// ------------------------------------------------------------
+// Assinatura do salão — sem gateway, liberação manual (spec seção 9/10)
+// ------------------------------------------------------------
+
+enum SubscriptionPlan {
+  TRIAL
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+model Subscription {
+  id      String @id @default(cuid())
+  salonId String @unique
+  salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
+
+  plan   SubscriptionPlan   @default(TRIAL)
+  status SubscriptionStatus @default(TRIAL)
+
+  trialEndsAt      DateTime // createdAt + 50 dias (spec: trial de 50 dias)
+  currentPeriodEnd DateTime?
+
+  // Preenchido manualmente por quem faz a conciliação do PIX (ver spec seção 9).
+  // Não é um webhook — é uma ação humana registrada.
+  activatedManuallyByEmail String?
+  activatedAt              DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@map("subscriptions")
+}
+
+// ------------------------------------------------------------
+// Fila de mensagens WhatsApp — tabela usada como fila própria
+// (ver arquitetura-modelo-de-dados.md, seção 4)
+// ------------------------------------------------------------
+
+enum WhatsAppJobType {
+  BOOKING_CONFIRMATION
+  REMINDER
+  PRESENCE_CHECK
+}
+
+enum WhatsAppJobStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model WhatsAppMessageJob {
+  id            String            @id @default(cuid())
+  appointmentId String
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  type          WhatsAppJobType
+  status        WhatsAppJobStatus @default(PENDING)
+  scheduledFor  DateTime
+  sentAt        DateTime?
+  failReason    String?
+  createdAt     DateTime          @default(now())
+
+  @@index([status, scheduledFor]) // é o índice que o worker/cron usa pra buscar o que enviar
+  @@map("whatsapp_message_jobs")
+}
