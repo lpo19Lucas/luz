@@ -4,6 +4,7 @@
 import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { setSubscriptionStatusAction } from "@/lib/actions/admin";
+import { formatSalonDate } from "@/lib/timezone";
 
 const PLAN_LABEL: Record<string, string> = {
   TRIAL: "Trial",
@@ -53,10 +54,10 @@ export default async function AdminPage() {
                 <Typography variant="caption" color="text.secondary">
                   {sub.salon.owner.email} · Plano {PLAN_LABEL[sub.plan] ?? sub.plan}
                   {sub.currentPeriodEnd
-                    ? ` · renova em ${sub.currentPeriodEnd.toLocaleDateString("pt-BR")}`
+                    ? ` · renova em ${formatSalonDate(sub.currentPeriodEnd)}`
                     : ""}
                   {sub.activatedAt
-                    ? ` · última ativação ${sub.activatedAt.toLocaleDateString("pt-BR")}`
+                    ? ` · última ativação ${formatSalonDate(sub.activatedAt)}`
                     : ""}
                 </Typography>
               </Box>

@@ -1,13 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, salonWallClockToUTC } from "@/lib/timezone";
 
 const STEP_MINUTES = 20;
-
-function parseHHMM(value: string, base: Date) {
-  const [h, m] = value.split(":").map(Number);
-  const d = new Date(base);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
 
 /**
  * Horários livres de um profissional pra um serviço num dia — cruza
@@ -19,13 +13,11 @@ export async function getAvailableSlots(professionalId: string, serviceId: strin
   const service = await prisma.service.findUnique({ where: { id: serviceId } });
   if (!service) return [];
 
-  const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
+  const dayStart = salonMidnightUTC(date);
+  const dayEnd = salonEndOfDayUTC(date);
 
   const [availabilities, exceptions, existingAppointments] = await Promise.all([
-    prisma.availability.findMany({ where: { professionalId, weekday: dayStart.getDay() } }),
+    prisma.availability.findMany({ where: { professionalId, weekday: salonWeekday(date) } }),
     prisma.availabilityException.findMany({ where: { professionalId, date: dayStart } }),
     prisma.appointment.findMany({
       where: { professionalId, status: { not: "CANCELLED" }, startAt: { gte: dayStart, lte: dayEnd } },
@@ -39,8 +31,8 @@ export async function getAvailableSlots(professionalId: string, serviceId: strin
   const slots: Date[] = [];
 
   for (const avail of availabilities) {
-    const windowStart = parseHHMM(avail.startTime, dayStart);
-    const windowEnd = parseHHMM(avail.endTime, dayStart);
+    const windowStart = salonWallClockToUTC(date, avail.startTime);
+    const windowEnd = salonWallClockToUTC(date, avail.endTime);
 
     for (
       let cursor = new Date(windowStart);
@@ -52,8 +44,8 @@ export async function getAvailableSlots(professionalId: string, serviceId: strin
 
       const blockedByException = exceptions.some((e) => {
         if (!e.startTime || !e.endTime) return false;
-        const exStart = parseHHMM(e.startTime, dayStart);
-        const exEnd = parseHHMM(e.endTime, dayStart);
+        const exStart = salonWallClockToUTC(date, e.startTime);
+        const exEnd = salonWallClockToUTC(date, e.endTime);
         return cursor < exEnd && slotEnd > exStart;
       });
       if (blockedByException) continue;

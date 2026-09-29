@@ -1,36 +1,19 @@
 // CRUD de serviços (spec P0.4).
 import { Box, Typography, Paper, Stack, TextField, Button } from "@mui/material";
-import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
+import { createServiceAction, deleteServiceAction } from "@/lib/actions/service";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-async function createService(formData: FormData) {
-  "use server";
-  const name = String(formData.get("name") ?? "").trim();
-  const durationMinutes = Number(formData.get("durationMinutes"));
-  const priceReais = Number(formData.get("price"));
-  if (!name || !durationMinutes || Number.isNaN(priceReais)) return;
-
-  const salon = await getCurrentSalon();
-  await prisma.service.create({
-    data: {
-      salonId: salon.id,
-      name,
-      durationMinutes,
-      priceCents: Math.round(priceReais * 100),
-    },
-  });
-  revalidatePath("/servicos");
 }
 
 export default async function ServicosPage() {
   const salon = await getCurrentSalon();
   const services = await prisma.service.findMany({
     where: { salonId: salon.id },
+    include: { appointments: { select: { id: true }, take: 1 } },
     orderBy: { name: "asc" },
   });
 
@@ -51,6 +34,7 @@ export default async function ServicosPage() {
             key={svc.id}
             direction="row"
             alignItems="center"
+            spacing={1.5}
             sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
           >
             <Box sx={{ flexGrow: 1 }}>
@@ -62,6 +46,25 @@ export default async function ServicosPage() {
             <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
               {formatPrice(svc.priceCents)}
             </Typography>
+            <Button component={Link} href={`/servicos/${svc.id}`} size="small">
+              Editar
+            </Button>
+            <form action={deleteServiceAction}>
+              <input type="hidden" name="id" value={svc.id} />
+              <Button
+                type="submit"
+                size="small"
+                color="error"
+                disabled={svc.appointments.length > 0}
+                title={
+                  svc.appointments.length > 0
+                    ? "Não é possível excluir: já existem agendamentos com esse serviço"
+                    : undefined
+                }
+              >
+                Excluir
+              </Button>
+            </form>
           </Stack>
         ))}
       </Paper>
@@ -70,7 +73,7 @@ export default async function ServicosPage() {
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
           Novo serviço
         </Typography>
-        <Stack component="form" action={createService} spacing={1.5}>
+        <Stack component="form" action={createServiceAction} spacing={1.5}>
           <TextField name="name" label="Nome" size="small" required />
           <Stack direction="row" spacing={1.5}>
             <TextField name="durationMinutes" label="Duração (min)" type="number" size="small" required />

@@ -5,6 +5,7 @@ import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { chooseSubscriptionPlan } from "@/lib/actions/salon";
+import { formatSalonDate } from "@/lib/timezone";
 
 const PLANS = [
   { value: "MONTHLY", label: "Mensal", pricePerMonth: 79, sub: "cobrado todo mês" },
@@ -72,7 +73,7 @@ export default async function AssinaturaPage() {
         )}
         {subscription.currentPeriodEnd && (
           <Typography variant="body2" color="text.secondary">
-            Renovação em {subscription.currentPeriodEnd.toLocaleDateString("pt-BR")}
+            Renovação em {formatSalonDate(subscription.currentPeriodEnd)}
           </Typography>
         )}
       </Paper>
@@ -136,7 +137,7 @@ export default async function AssinaturaPage() {
         </Paper>
         {subscription.activatedAt && (
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-            Última ativação confirmada em {subscription.activatedAt.toLocaleDateString("pt-BR")}
+            Última ativação confirmada em {formatSalonDate(subscription.activatedAt)}
             {subscription.activatedManuallyByEmail ? ` por ${subscription.activatedManuallyByEmail}` : ""}.
           </Typography>
         )}

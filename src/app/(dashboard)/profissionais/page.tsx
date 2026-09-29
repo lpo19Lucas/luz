@@ -1,25 +1,20 @@
 // CRUD de profissionais + disponibilidade (spec P0.2, P0.3, P0.18).
 // Referência visual: mui-exemplos.html (Exemplo 4).
 import { Box, Typography, Paper, Stack, Chip, TextField, Button, Avatar } from "@mui/material";
-import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
-
-async function createProfessional(formData: FormData) {
-  "use server";
-  const name = String(formData.get("name") ?? "").trim();
-  if (!name) return;
-  const salon = await getCurrentSalon();
-  await prisma.professional.create({ data: { salonId: salon.id, name } });
-  revalidatePath("/profissionais");
-}
+import { createProfessionalAction, deleteProfessionalAction } from "@/lib/actions/professional";
+import { AvailabilityFields } from "./AvailabilityFields";
 
 export default async function ProfissionaisPage() {
   const salon = await getCurrentSalon();
   const professionals = await prisma.professional.findMany({
     where: { salonId: salon.id },
+    include: { services: true, appointments: { select: { id: true }, take: 1 } },
     orderBy: { name: "asc" },
   });
+  const services = await prisma.service.findMany({ where: { salonId: salon.id }, orderBy: { name: "asc" } });
 
   return (
     <Box>
@@ -46,23 +41,38 @@ export default async function ProfissionaisPage() {
             <Avatar sx={{ bgcolor: "primary.main", width: 36, height: 36, fontSize: 14 }}>
               {prof.name.charAt(0).toUpperCase()}
             </Avatar>
-            <Typography sx={{ flexGrow: 1 }}>{prof.name}</Typography>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography>{prof.name}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {prof.services.length} serviço(s)
+              </Typography>
+            </Box>
             <Chip
               label={prof.active ? "ATIVO" : "INATIVO"}
               color={prof.active ? "success" : "default"}
               size="small"
             />
+            <Button component={Link} href={`/profissionais/${prof.id}`} size="small">
+              Editar
+            </Button>
+            <form action={deleteProfessionalAction}>
+              <input type="hidden" name="id" value={prof.id} />
+              <Button type="submit" size="small" color="error">
+                {prof.appointments.length > 0 ? "Inativar" : "Excluir"}
+              </Button>
+            </form>
           </Stack>
         ))}
       </Paper>
 
-      <Paper elevation={1} sx={{ p: 2.5, maxWidth: 420 }}>
+      <Paper elevation={1} sx={{ p: 2.5, maxWidth: 520 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
           Novo profissional
         </Typography>
-        <Stack component="form" action={createProfessional} direction="row" spacing={1.5}>
+        <Stack component="form" action={createProfessionalAction} spacing={2}>
           <TextField name="name" label="Nome" size="small" fullWidth required />
-          <Button type="submit" variant="contained">
+          <AvailabilityFields services={services} />
+          <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
             Adicionar
           </Button>
         </Stack>

@@ -4,6 +4,7 @@ import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
+import { salonMidnightUTC, salonEndOfDayUTC, formatSalonDate, formatSalonTime } from "@/lib/timezone";
 
 const STATUS_LABEL: Record<string, string> = {
   AWAITING_CONFIRMATION: "Aguardando confirmação",
@@ -31,7 +32,7 @@ function toISODate(d: Date) {
 
 function addDays(d: Date, days: number) {
   const copy = new Date(d);
-  copy.setDate(copy.getDate() + days);
+  copy.setUTCDate(copy.getUTCDate() + days);
   return copy;
 }
 
@@ -44,10 +45,8 @@ export default async function AgendaPage({
   const salon = await getCurrentSalon();
   const date = parseDate(dateParam);
 
-  const dayStart = new Date(date);
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(date);
-  dayEnd.setHours(23, 59, 59, 999);
+  const dayStart = salonMidnightUTC(date);
+  const dayEnd = salonEndOfDayUTC(date);
 
   const professionals = await prisma.professional.findMany({
     where: { salonId: salon.id, active: true },
@@ -61,7 +60,7 @@ export default async function AgendaPage({
     orderBy: { name: "asc" },
   });
 
-  const dateLabel = date.toLocaleDateString("pt-BR", {
+  const dateLabel = formatSalonDate(date, {
     weekday: "long",
     day: "2-digit",
     month: "long",
@@ -113,7 +112,7 @@ export default async function AgendaPage({
                   }}
                 >
                   <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {appt.startAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    {formatSalonTime(appt.startAt)}
                     {" — "}
                     {appt.service.name}
                   </Typography>
