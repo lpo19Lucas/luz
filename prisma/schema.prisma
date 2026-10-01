@@ -49,10 +49,42 @@ model Salon {
   pixKey      String?
   pixQrCodeUrl String?
 
+  // Perfil público do salão (F3) — tudo opcional. Aparece no link de
+  // agendamento e alimenta o SEO/JSON-LD (F15).
+  coverImageData      String?   // data URL (JPEG redimensionado no navegador) — servido por /api/salons/:slug/cover
+  coverImageUpdatedAt DateTime? // cache-busting da capa
+  primaryColor        String?   // "#RRGGBB" — cor principal da página pública
+  accentColor         String?   // "#RRGGBB" — cor de destaque
+  description         String?   // "sobre o salão" (pode ser gerado com IA e editado pelo dono)
+  faqJson             Json?     // [{ q, a }] — FAQ público do salão (JSON-LD FAQPage)
+  whatsappPhone       String?   // só dígitos, com DDD
+  email               String?
+  cnpj                String?
+  instagramUrl        String?
+  facebookUrl         String?
+  tiktokUrl           String?
+  websiteUrl          String?
+  addressStreet       String?
+  addressNumber       String?
+  addressComplement   String?
+  addressNeighborhood String?
+  addressCity         String?
+  addressState        String?
+  addressZip          String?
+
+  // Onboarding (F12): o link público só abre pra clientes depois que o dono
+  // conclui o mínimo (serviço + profissional com horário) e publica.
+  publishedAt DateTime?
+
   professionals Professional[]
   services      Service[]
   clients       Client[]
   appointments  Appointment[]
+  agendaBlocks  AgendaBlock[]
+  events        AppointmentEvent[]
+  products      Product[]
+  reservations  ProductReservation[]
+  messageTemplates MessageTemplate[]
 
   subscription            Subscription?
   presenceConfirmationCfg PresenceConfirmationConfig?
@@ -81,6 +113,7 @@ model Professional {
   availability  Availability[]
   exceptions    AvailabilityException[]
   appointments  Appointment[]
+  agendaBlocks  AgendaBlock[]
 
   @@index([salonId])
   @@map("professionals")
@@ -99,7 +132,8 @@ model Availability {
   @@map("availabilities")
 }
 
-// Bloqueio pontual — folga, feriado (P0.18)
+// Bloqueio pontual — folga, feriado (P0.18). LEGADO: substituído por
+// AgendaBlock (F4); os dados foram copiados na migration roadmap_outubro.
 model AvailabilityException {
   id             String       @id @default(cuid())
   professionalId String
@@ -111,6 +145,35 @@ model AvailabilityException {
 
   @@index([professionalId, date])
   @@map("availability_exceptions")
+}
+
+// Bloqueio de agenda (F4): pontual ou recorrente, de um profissional ou do
+// salão inteiro (professionalId null = feriado/fechamento geral).
+enum AgendaBlockRecurrence {
+  ONCE   // só no dia `date`
+  DAILY  // todo dia (dentro de startsOn..endsOn, se definidos)
+  WEEKLY // toda semana no `weekday`
+}
+
+model AgendaBlock {
+  id             String                @id @default(cuid())
+  salonId        String
+  salon          Salon                 @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  professionalId String?
+  professional   Professional?         @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  recurrence     AgendaBlockRecurrence @default(ONCE)
+  date           DateTime?             @db.Date // ONCE
+  weekday        Int?                  // WEEKLY: 0 = domingo ... 6 = sábado
+  startsOn       DateTime?             @db.Date // recorrentes: a partir de (opcional)
+  endsOn         DateTime?             @db.Date // recorrentes: até (opcional)
+  startTime      String?               // "12:00" — null = dia inteiro
+  endTime        String?
+  reason         String?
+  createdAt      DateTime              @default(now())
+
+  @@index([salonId])
+  @@index([professionalId])
+  @@map("agenda_blocks")
 }
 
 // ------------------------------------------------------------
@@ -155,7 +218,13 @@ model Client {
   phone     String
   createdAt DateTime @default(now())
 
+  // Lista de banidos (F7): não conseguem agendar nem reservar produto.
+  bannedAt  DateTime?
+  banReason String?
+  notes     String? // anotações do dono sobre o cliente
+
   appointments Appointment[]
+  reservations ProductReservation[]
 
   @@unique([salonId, phone]) // mesmo telefone = mesmo cliente dentro do salão
   @@map("clients")
@@ -205,19 +274,65 @@ model Appointment {
   // ou não se aplica (confirmação de presença desabilitada / já confirmado).
   noShowHandledAt DateTime?
 
-  // Quantas vezes esse agendamento já foi reagendado — histórico simples,
-  // sem tabela própria (spec: reagendar preserva o mesmo token/link).
+  // Quantas vezes esse agendamento já foi reagendado (o histórico completo
+  // fica em AppointmentEvent).
   rescheduledCount Int @default(0)
+
+  // Quem criou: o cliente pelo link público ou o dono pelo dashboard (B3).
+  source AppointmentSource @default(ONLINE)
 
   createdAt DateTime @default(now())
 
   whatsappJobs WhatsAppMessageJob[]
+  events       AppointmentEvent[]
+  reservations ProductReservation[]
 
   @@index([salonId])
   @@index([professionalId, startAt]) // consulta de overlap / agenda do dia
   @@index([accessToken])
   @@index([status, startAt]) // consulta do cron de no-show
   @@map("appointments")
+}
+
+enum AppointmentSource {
+  ONLINE // cliente pelo link público
+  OWNER  // dono/recepção pelo dashboard
+}
+
+// Histórico de eventos do agendamento (F5) — base da lista de
+// cancelados/remarcados e da auditoria de quem fez o quê.
+enum AppointmentEventType {
+  CREATED
+  CANCELLED
+  RESCHEDULED
+  PRESENCE_CONFIRMED
+  COMPLETED
+  NO_SHOW
+  OUTCOME_REVERTED
+}
+
+enum AppointmentEventActor {
+  CLIENT
+  OWNER
+  SYSTEM
+}
+
+model AppointmentEvent {
+  id              String                @id @default(cuid())
+  salonId         String
+  salon           Salon                 @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  appointmentId   String
+  appointment     Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  type            AppointmentEventType
+  actor           AppointmentEventActor
+  previousStartAt DateTime?             // RESCHEDULED
+  newStartAt      DateTime?             // RESCHEDULED
+  note            String?
+  createdAt       DateTime              @default(now())
+
+  @@index([salonId, type, createdAt])
+  @@index([appointmentId])
+  @@map("appointment_events")
 }
 
 // ------------------------------------------------------------
@@ -310,4 +425,70 @@ model WhatsAppMessageJob {
 
   @@index([status, scheduledFor]) // é o índice que o worker/cron usa pra buscar o que enviar
   @@map("whatsapp_message_jobs")
+}
+
+// ------------------------------------------------------------
+// Templates de mensagens automáticas (F9) — um por tipo, por salão.
+// Sem registro = usa o texto padrão (src/lib/messageTemplates.ts).
+// ------------------------------------------------------------
+
+model MessageTemplate {
+  id        String          @id @default(cuid())
+  salonId   String
+  salon     Salon           @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  type      WhatsAppJobType
+  body      String
+  updatedAt DateTime        @updatedAt
+
+  @@unique([salonId, type])
+  @@map("message_templates")
+}
+
+// ------------------------------------------------------------
+// Catálogo de produtos (F13) — vitrine + reserva pra retirar no salão.
+// Sem pagamento online (decisão 01/10/2026).
+// ------------------------------------------------------------
+
+model Product {
+  id               String    @id @default(cuid())
+  salonId          String
+  salon            Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  name             String
+  description      String?
+  priceCents       Int
+  imageData        String?   // data URL — servido por /api/products/:id/image
+  imageUpdatedAt   DateTime?
+  stock            Int?      // null = não controla estoque
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+
+  reservations ProductReservation[]
+
+  @@index([salonId])
+  @@map("products")
+}
+
+enum ProductReservationStatus {
+  PENDING   // cliente reservou, ainda não retirou
+  DELIVERED // entregue/vendido no salão
+  CANCELLED
+}
+
+model ProductReservation {
+  id            String                   @id @default(cuid())
+  salonId       String
+  salon         Salon                    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  appointment   Appointment?             @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  quantity      Int                      @default(1)
+  unitPriceCents Int                     // preço no momento da reserva
+  status        ProductReservationStatus @default(PENDING)
+  createdAt     DateTime                 @default(now())
+
+  @@index([salonId, status])
+  @@map("product_reservations")
 }
