@@ -17,6 +17,7 @@ import {
   rescheduleAppointmentByToken,
   BookingError,
 } from "@/lib/booking";
+import { salonWallClockToUTC } from "@/lib/timezone";
 
 beforeEach(async () => {
   await resetDb();
@@ -106,6 +107,29 @@ describe("createAppointment", () => {
     });
 
     expect(appointment.source).toBe("OWNER");
+  });
+
+  it("aceita um horário entre 21h e 23h59 de Brasília (regressão: virava 00h-02h59 UTC do dia seguinte e caía no balde de dia errado)", async () => {
+    const { salon, professional, service } = await createTestSalon();
+    const day = futureSlotTime(24);
+    // 22:00 de Brasília = 01:00 UTC do dia seguinte — é exatamente a faixa
+    // que `salonMidnightUTC` (que ignora a hora) bucketava errado quando
+    // recebia um instante de verdade em vez de um marcador de dia.
+    const startAt = salonWallClockToUTC(day, "22:00");
+
+    const { appointment } = await createAppointment({
+      salonSlug: salon.slug,
+      professionalId: professional.id,
+      serviceId: service.id,
+      clientName: "Cliente",
+      clientPhone: "11999990000",
+      startAt,
+      wantsToPayNow: false,
+      source: "ONLINE",
+      actor: "CLIENT",
+    });
+
+    expect(appointment.startAt.getTime()).toBe(startAt.getTime());
   });
 
   it("recusa cliente banido com mensagem neutra", async () => {

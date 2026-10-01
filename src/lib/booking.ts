@@ -2,6 +2,7 @@ import { Prisma, PrismaClient, AppointmentSource, AppointmentEventActor } from "
 import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { getAvailableSlots } from "@/lib/slots";
+import { salonCalendarDay } from "@/lib/timezone";
 import { recordAppointmentEvent } from "@/lib/appointmentEvents";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 
@@ -76,7 +77,7 @@ async function assertSlotIsOffered(
   startAt: Date,
   excludeAppointmentId?: string
 ) {
-  const slots = await getAvailableSlots(professionalId, serviceId, startAt, excludeAppointmentId);
+  const slots = await getAvailableSlots(professionalId, serviceId, salonCalendarDay(startAt), excludeAppointmentId);
   const offered = slots.some((slot) => slot.getTime() === startAt.getTime());
   if (!offered) throw new BookingError("SLOT_UNAVAILABLE");
 }

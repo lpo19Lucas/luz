@@ -5,6 +5,7 @@ import { Box, Typography, Paper, Stack, TextField, Button, Switch, FormControlLa
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { updateSalonSettings, updatePresenceConfirmationConfig } from "@/lib/actions/salon";
+import SalonProfileForm from "./SalonProfileForm";
 
 export default async function ConfiguracoesPage() {
   const salon = await getCurrentSalon();
@@ -17,6 +18,33 @@ export default async function ConfiguracoesPage() {
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
         Configurações
       </Typography>
+
+      <SalonProfileForm
+        salon={{
+          slug: salon.slug,
+          description: salon.description,
+          primaryColor: salon.primaryColor,
+          accentColor: salon.accentColor,
+          whatsappPhone: salon.whatsappPhone,
+          email: salon.email,
+          cnpj: salon.cnpj,
+          instagramUrl: salon.instagramUrl,
+          facebookUrl: salon.facebookUrl,
+          tiktokUrl: salon.tiktokUrl,
+          websiteUrl: salon.websiteUrl,
+          addressStreet: salon.addressStreet,
+          addressNumber: salon.addressNumber,
+          addressComplement: salon.addressComplement,
+          addressNeighborhood: salon.addressNeighborhood,
+          addressCity: salon.addressCity,
+          addressState: salon.addressState,
+          addressZip: salon.addressZip,
+          hasCover: Boolean(salon.coverImageData),
+          coverUrl: salon.coverImageData
+            ? `/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`
+            : null,
+        }}
+      />
 
       <Paper elevation={1} sx={{ p: 3, maxWidth: 480, mb: 3 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 2 }}>
