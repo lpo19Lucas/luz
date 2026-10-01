@@ -40,6 +40,7 @@ const STATUS_LABEL: Record<string, string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
+  NO_SHOW: "Não compareceu",
 };
 
 function formatPrice(cents: number) {

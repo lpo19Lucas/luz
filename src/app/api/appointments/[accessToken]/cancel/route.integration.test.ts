@@ -57,4 +57,14 @@ describe("POST /api/appointments/[accessToken]/cancel", () => {
 
     expect(second.status).toBe(409);
   });
+
+  it("retorna 409 para atendimento já encerrado (concluído ou não compareceu)", async () => {
+    for (const status of ["COMPLETED", "NO_SHOW"] as const) {
+      const appointment = await createAppointment();
+      await prisma.appointment.update({ where: { id: appointment.id }, data: { status } });
+
+      const res = await cancel(appointment.accessToken);
+      expect(res.status).toBe(409);
+    }
+  });
 });

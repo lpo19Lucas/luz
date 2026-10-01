@@ -170,6 +170,8 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+  NO_SHOW // cliente não compareceu — marcado pelo dono na agenda (não confundir
+          // com o alerta automático de "não confirmou presença", que é `noShowHandledAt`)
 }
 
 model Appointment {

@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 
 type AppointmentDetails = {
-  status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   startAt: string;
   salonName: string;
   salonSlug: string;
@@ -32,6 +32,7 @@ const STATUS_LABEL: Record<AppointmentDetails["status"], string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
+  NO_SHOW: "Não compareceu",
 };
 
 function todayISODate() {

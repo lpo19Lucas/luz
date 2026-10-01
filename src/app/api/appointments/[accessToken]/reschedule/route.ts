@@ -44,7 +44,11 @@ export async function POST(
         if (!appointment) {
           throw new Error("NOT_FOUND");
         }
-        if (appointment.status === "CANCELLED" || appointment.status === "COMPLETED") {
+        if (
+          appointment.status === "CANCELLED" ||
+          appointment.status === "COMPLETED" ||
+          appointment.status === "NO_SHOW"
+        ) {
           throw new Error("CANNOT_RESCHEDULE");
         }
 

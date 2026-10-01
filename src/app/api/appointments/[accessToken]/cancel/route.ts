@@ -24,6 +24,9 @@ export async function POST(
   if (appointment.status === "CANCELLED") {
     return NextResponse.json({ error: "Agendamento já estava cancelado" }, { status: 409 });
   }
+  if (appointment.status === "COMPLETED" || appointment.status === "NO_SHOW") {
+    return NextResponse.json({ error: "Esse atendimento já foi encerrado" }, { status: 409 });
+  }
 
   await prisma.appointment.update({
     where: { id: appointment.id },

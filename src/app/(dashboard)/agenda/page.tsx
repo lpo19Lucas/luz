@@ -3,6 +3,7 @@
 import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
+import { setAppointmentOutcomeAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
 import { salonMidnightUTC, salonEndOfDayUTC, formatSalonDate, formatSalonTime } from "@/lib/timezone";
 
@@ -11,14 +12,39 @@ const STATUS_LABEL: Record<string, string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
+  NO_SHOW: "Não compareceu",
 };
 
-const STATUS_COLOR: Record<string, "warning" | "primary" | "default" | "success"> = {
+const STATUS_COLOR: Record<string, "warning" | "primary" | "default" | "success" | "error"> = {
   AWAITING_CONFIRMATION: "warning",
   CONFIRMED: "primary",
   CANCELLED: "default",
   COMPLETED: "success",
+  NO_SHOW: "error",
 };
+
+/** Botão de um formulário que chama a server action de desfecho do atendimento. */
+function OutcomeButton({
+  appointmentId,
+  outcome,
+  label,
+  color,
+}: {
+  appointmentId: string;
+  outcome: "COMPLETED" | "NO_SHOW" | "PENDING";
+  label: string;
+  color: "success" | "error" | "inherit";
+}) {
+  return (
+    <form action={setAppointmentOutcomeAction}>
+      <input type="hidden" name="appointmentId" value={appointmentId} />
+      <input type="hidden" name="outcome" value={outcome} />
+      <Button type="submit" size="small" color={color} sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}>
+        {label}
+      </Button>
+    </form>
+  );
+}
 
 function parseDate(value?: string) {
   if (!value) return new Date();
@@ -59,6 +85,8 @@ export default async function AgendaPage({
     },
     orderBy: { name: "asc" },
   });
+
+  const now = new Date();
 
   const dateLabel = formatSalonDate(date, {
     weekday: "long",
@@ -125,7 +153,7 @@ export default async function AgendaPage({
                       color={STATUS_COLOR[appt.status]}
                       size="small"
                     />
-                    {appt.status === "AWAITING_CONFIRMATION" && appt.noShowHandledAt && (
+                    {appt.status === "AWAITING_CONFIRMATION" && appt.noShowHandledAt && appt.startAt > now && (
                       <Chip
                         label="Cliente não confirmou — ligue ou cancele"
                         color="error"
@@ -133,6 +161,20 @@ export default async function AgendaPage({
                       />
                     )}
                   </Stack>
+                  {/* Depois que o horário começa, o dono marca o desfecho — é isso
+                      que alimenta faturamento, ticket médio e taxa de no-show. */}
+                  {appt.startAt <= now &&
+                    (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION") && (
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }}>
+                        <OutcomeButton appointmentId={appt.id} outcome="COMPLETED" label="✓ Concluído" color="success" />
+                        <OutcomeButton appointmentId={appt.id} outcome="NO_SHOW" label="✗ Não compareceu" color="error" />
+                      </Stack>
+                    )}
+                  {(appt.status === "COMPLETED" || appt.status === "NO_SHOW") && (
+                    <Box sx={{ mt: 0.5 }}>
+                      <OutcomeButton appointmentId={appt.id} outcome="PENDING" label="Desfazer" color="inherit" />
+                    </Box>
+                  )}
                 </Box>
               ))}
             </Stack>
