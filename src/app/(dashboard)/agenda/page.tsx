@@ -5,7 +5,48 @@ import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { setAppointmentOutcomeAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
-import { salonMidnightUTC, salonEndOfDayUTC, formatSalonDate, formatSalonTime } from "@/lib/timezone";
+import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, formatSalonDate, formatSalonTime } from "@/lib/timezone";
+import { getAgendaKpis, type AgendaKpis } from "@/lib/agendaKpis";
+
+function formatPrice(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Cabeçalho de KPIs do dia e da semana (F2) — agendados, concluídos, faltas,
+ * faturamento previsto/realizado e ocupação. */
+function KpiHeader({ title, kpis }: { title: string; kpis: AgendaKpis }) {
+  const occupancy =
+    kpis.availableMinutes > 0 ? Math.round((kpis.occupiedMinutes / kpis.availableMinutes) * 100) : 0;
+
+  const items: Array<{ label: string; value: string }> = [
+    { label: "Agendados", value: String(kpis.scheduledCount) },
+    { label: "Concluídos", value: String(kpis.completedCount) },
+    { label: "Faltas", value: String(kpis.noShowCount) },
+    { label: "Faturamento previsto", value: formatPrice(kpis.expectedRevenueCents) },
+    { label: "Faturamento realizado", value: formatPrice(kpis.realizedRevenueCents) },
+    { label: "Ocupação", value: `${occupancy}%` },
+  ];
+
+  return (
+    <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 500, mb: 1.5 }}>
+        {title}
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
+        {items.map((item) => (
+          <Box key={item.label} sx={{ minWidth: 120 }}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {item.label}
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {item.value}
+            </Typography>
+          </Box>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
 
 const STATUS_LABEL: Record<string, string> = {
   AWAITING_CONFIRMATION: "Aguardando confirmação",
@@ -74,6 +115,15 @@ export default async function AgendaPage({
   const dayStart = salonMidnightUTC(date);
   const dayEnd = salonEndOfDayUTC(date);
 
+  const weekday = salonWeekday(date);
+  const weekStart = salonMidnightUTC(addDays(date, -weekday));
+  const weekEnd = salonEndOfDayUTC(addDays(date, 6 - weekday));
+
+  const [dayKpis, weekKpis] = await Promise.all([
+    getAgendaKpis(salon.id, dayStart, dayEnd),
+    getAgendaKpis(salon.id, weekStart, weekEnd),
+  ]);
+
   const professionals = await prisma.professional.findMany({
     where: { salonId: salon.id, active: true },
     include: {
@@ -112,6 +162,9 @@ export default async function AgendaPage({
           </Button>
         </Stack>
       </Stack>
+
+      <KpiHeader title="Dia selecionado" kpis={dayKpis} />
+      <KpiHeader title="Esta semana" kpis={weekKpis} />
 
       {professionals.length === 0 && (
         <Typography color="text.secondary">Nenhum profissional cadastrado ainda.</Typography>
