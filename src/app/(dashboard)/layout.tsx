@@ -1,4 +1,4 @@
-import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
+import { Typography, Box, Button, Stack, Divider } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { logoutAction } from "@/lib/actions/auth";
@@ -9,48 +9,87 @@ const NAV_ITEMS = [
   { href: "/servicos", label: "Serviços" },
   { href: "/bloqueios", label: "Bloqueios" },
   { href: "/historico", label: "Histórico" },
+  { href: "/clientes", label: "Clientes" },
   { href: "/metricas", label: "Métricas" },
   { href: "/assinatura", label: "Assinatura" },
   { href: "/configuracoes", label: "Configurações" },
 ];
 
+const SIDEBAR_WIDTH = 220;
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const salon = await getCurrentSalon();
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <AppBar position="static" elevation={0}>
-        <Toolbar sx={{ gap: 3, flexWrap: "wrap" }}>
-          <Typography variant="h6" sx={{ fontWeight: 500 }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex" }}>
+      <Box
+        component="nav"
+        sx={{
+          width: SIDEBAR_WIDTH,
+          flexShrink: 0,
+          minHeight: "100vh",
+          bgcolor: "primary.main",
+          color: "primary.contrastText",
+          display: "flex",
+          flexDirection: "column",
+          position: "sticky",
+          top: 0,
+          alignSelf: "flex-start",
+        }}
+      >
+        <Box sx={{ p: 2.5, pb: 1.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 500, lineHeight: 1.2 }}>
             {salon.name}
           </Typography>
-          <Box sx={{ display: "flex", gap: 2.5, flexGrow: 1 }}>
-            {NAV_ITEMS.map((item) => (
+        </Box>
+
+        <Stack component="ul" sx={{ listStyle: "none", m: 0, p: 0, flexGrow: 1 }}>
+          {NAV_ITEMS.map((item) => (
+            <Box component="li" key={item.href}>
               <Typography
-                key={item.href}
                 component={Link}
                 href={item.href}
-                sx={{ color: "inherit", textDecoration: "none", fontSize: 14 }}
+                sx={{
+                  display: "block",
+                  color: "inherit",
+                  textDecoration: "none",
+                  fontSize: 14,
+                  px: 2.5,
+                  py: 1.25,
+                  "&:hover": { bgcolor: "rgba(255,255,255,0.08)" },
+                }}
               >
                 {item.label}
               </Typography>
-            ))}
-          </Box>
+            </Box>
+          ))}
+        </Stack>
+
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.15)" }} />
+        <Box sx={{ p: 1.5 }}>
           <Typography
             component={Link}
             href={`/${salon.slug}`}
-            sx={{ color: "secondary.main", textDecoration: "none", fontSize: 13 }}
+            sx={{
+              display: "block",
+              color: "secondary.main",
+              textDecoration: "none",
+              fontSize: 13,
+              px: 1,
+              py: 1,
+            }}
           >
             Ver site público ↗
           </Typography>
           <Box component="form" action={logoutAction}>
-            <Button type="submit" size="small" sx={{ color: "inherit" }}>
+            <Button type="submit" size="small" fullWidth sx={{ color: "inherit", justifyContent: "flex-start", px: 1 }}>
               Sair
             </Button>
           </Box>
-        </Toolbar>
-      </AppBar>
-      <Box sx={{ p: 3, maxWidth: 1100, mx: "auto" }}>{children}</Box>
+        </Box>
+      </Box>
+
+      <Box sx={{ flexGrow: 1, p: 3, maxWidth: 1100 }}>{children}</Box>
     </Box>
   );
 }
