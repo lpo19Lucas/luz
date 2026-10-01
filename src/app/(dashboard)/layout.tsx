@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/profissionais", label: "Profissionais" },
   { href: "/servicos", label: "Serviços" },
   { href: "/bloqueios", label: "Bloqueios" },
+  { href: "/historico", label: "Histórico" },
   { href: "/metricas", label: "Métricas" },
   { href: "/assinatura", label: "Assinatura" },
   { href: "/configuracoes", label: "Configurações" },
