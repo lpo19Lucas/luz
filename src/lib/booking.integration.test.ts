@@ -12,6 +12,7 @@ import { resetDb, createTestSalon, futureSlotTime } from "@tests/integration/hel
 import {
   createAppointment,
   cancelAppointmentByToken,
+  cancelAppointmentById,
   confirmPresenceByToken,
   rescheduleAppointmentByToken,
   BookingError,
@@ -193,6 +194,32 @@ describe("cancelAppointmentByToken", () => {
     });
     expect(events).toHaveLength(1);
     expect(events[0].actor).toBe("CLIENT");
+  });
+});
+
+describe("cancelAppointmentById", () => {
+  it("cancela um agendamento de outro salão escopado por salonId", async () => {
+    const { salon, professional, service } = await createTestSalon();
+    const { salon: outroSalon } = await createTestSalon();
+    const { appointment } = await createAppointment({
+      salonSlug: salon.slug,
+      professionalId: professional.id,
+      serviceId: service.id,
+      clientName: "Cliente",
+      clientPhone: "11999990000",
+      startAt: futureSlotTime(24),
+      wantsToPayNow: false,
+      source: "OWNER",
+      actor: "OWNER",
+    });
+
+    await expect(
+      cancelAppointmentById({ salonId: outroSalon.id, appointmentId: appointment.id, actor: "OWNER" })
+    ).rejects.toThrow(new BookingError("NOT_FOUND"));
+
+    await cancelAppointmentById({ salonId: salon.id, appointmentId: appointment.id, actor: "OWNER" });
+    const updated = await prisma.appointment.findUniqueOrThrow({ where: { id: appointment.id } });
+    expect(updated.status).toBe("CANCELLED");
   });
 });
 

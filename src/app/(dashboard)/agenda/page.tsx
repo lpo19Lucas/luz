@@ -3,7 +3,7 @@
 import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
-import { setAppointmentOutcomeAction } from "@/lib/actions/appointment";
+import { setAppointmentOutcomeAction, cancelAppointmentOwnerAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
 import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, formatSalonDate, formatSalonTime } from "@/lib/timezone";
 import { getAgendaKpis, type AgendaKpis } from "@/lib/agendaKpis";
@@ -87,6 +87,23 @@ function OutcomeButton({
   );
 }
 
+/** Botão "Cancelar" (B3) — cancelamento pelo dono, mesma regra de negócio do cliente. */
+function CancelButton({ appointmentId }: { appointmentId: string }) {
+  return (
+    <form action={cancelAppointmentOwnerAction}>
+      <input type="hidden" name="appointmentId" value={appointmentId} />
+      <Button
+        type="submit"
+        size="small"
+        color="inherit"
+        sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}
+      >
+        Cancelar
+      </Button>
+    </form>
+  );
+}
+
 function parseDate(value?: string) {
   if (!value) return new Date();
   const d = new Date(`${value}T00:00:00`);
@@ -160,6 +177,14 @@ export default async function AgendaPage({
           <Button component={Link} href={`/agenda?date=${toISODate(addDays(date, 1))}`} size="small">
             Próximo dia →
           </Button>
+          <Button
+            component={Link}
+            href={`/agenda/novo?date=${toISODate(date)}`}
+            size="small"
+            variant="contained"
+          >
+            + Novo agendamento
+          </Button>
         </Stack>
       </Stack>
 
@@ -173,9 +198,18 @@ export default async function AgendaPage({
       <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
         {professionals.map((prof) => (
           <Paper key={prof.id} elevation={1} sx={{ p: 2, flex: "1 1 260px", minWidth: 240 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
-              {prof.name}
-            </Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                {prof.name}
+              </Typography>
+              <Button
+                component={Link}
+                href={`/agenda/novo?professionalId=${prof.id}&date=${toISODate(date)}`}
+                size="small"
+              >
+                + Novo
+              </Button>
+            </Stack>
             {prof.appointments.length === 0 && (
               <Typography variant="body2" color="text.secondary">
                 Sem agendamentos neste dia.
@@ -214,6 +248,22 @@ export default async function AgendaPage({
                       />
                     )}
                   </Stack>
+                  {/* Antes do horário começar, o dono pode cancelar ou remarcar
+                      (B3) — remarcar reusa a mesma tela do link público do cliente. */}
+                  {appt.startAt > now &&
+                    (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION") && (
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }}>
+                        <CancelButton appointmentId={appt.id} />
+                        <Button
+                          component={Link}
+                          href={`/${salon.slug}/agendamento/${appt.accessToken}`}
+                          size="small"
+                          sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}
+                        >
+                          Remarcar
+                        </Button>
+                      </Stack>
+                    )}
                   {/* Depois que o horário começa, o dono marca o desfecho — é isso
                       que alimenta faturamento, ticket médio e taxa de no-show. */}
                   {appt.startAt <= now &&
