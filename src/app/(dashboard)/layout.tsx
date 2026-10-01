@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: "/agenda", label: "Agenda" },
   { href: "/profissionais", label: "Profissionais" },
   { href: "/servicos", label: "Serviços" },
+  { href: "/bloqueios", label: "Bloqueios" },
   { href: "/metricas", label: "Métricas" },
   { href: "/assinatura", label: "Assinatura" },
   { href: "/configuracoes", label: "Configurações" },

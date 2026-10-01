@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, salonWallClockToUTC } from "@/lib/timezone";
+import { getBlocksForDate, blockIsFullDay, blockOverlaps } from "@/lib/agendaBlocks";
 
 const STEP_MINUTES = 20;
 
@@ -21,9 +22,9 @@ export async function getAvailableSlots(
   const dayStart = salonMidnightUTC(date);
   const dayEnd = salonEndOfDayUTC(date);
 
-  const [availabilities, exceptions, existingAppointments] = await Promise.all([
+  const [availabilities, blocks, existingAppointments] = await Promise.all([
     prisma.availability.findMany({ where: { professionalId, weekday: salonWeekday(date) } }),
-    prisma.availabilityException.findMany({ where: { professionalId, date: dayStart } }),
+    getBlocksForDate(service.salonId, professionalId, date),
     prisma.appointment.findMany({
       where: {
         professionalId,
@@ -34,7 +35,7 @@ export async function getAvailableSlots(
     }),
   ]);
 
-  if (exceptions.some((e) => !e.startTime && !e.endTime)) return []; // dia inteiro bloqueado
+  if (blocks.some(blockIsFullDay)) return []; // dia inteiro bloqueado (profissional ou salão inteiro)
 
   const durationMs = service.durationMinutes * 60_000;
   const now = new Date();
@@ -52,13 +53,8 @@ export async function getAvailableSlots(
       const slotEnd = new Date(cursor.getTime() + durationMs);
       if (cursor < now) continue;
 
-      const blockedByException = exceptions.some((e) => {
-        if (!e.startTime || !e.endTime) return false;
-        const exStart = salonWallClockToUTC(date, e.startTime);
-        const exEnd = salonWallClockToUTC(date, e.endTime);
-        return cursor < exEnd && slotEnd > exStart;
-      });
-      if (blockedByException) continue;
+      const blockedByAgendaBlock = blocks.some((b) => blockOverlaps(b, date, cursor, slotEnd));
+      if (blockedByAgendaBlock) continue;
 
       const blockedByAppointment = existingAppointments.some(
         (a) => cursor < a.endAt && slotEnd > a.startAt
