@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
+import { recordAppointmentEvent } from "@/lib/appointmentEvents";
+import { AppointmentEventType } from "@prisma/client";
 
 /**
  * Desfecho de um atendimento, marcado pelo dono na Agenda depois que o
@@ -45,6 +47,14 @@ export async function setAppointmentOutcome(params: {
   if (outcome !== "PENDING") {
     await cancelPendingWhatsAppJobs(appointment.id);
   }
+
+  const eventType: AppointmentEventType = outcome === "PENDING" ? "OUTCOME_REVERTED" : outcome;
+  await recordAppointmentEvent({
+    salonId,
+    appointmentId: appointment.id,
+    type: eventType,
+    actor: "OWNER",
+  });
 
   return { ok: true };
 }

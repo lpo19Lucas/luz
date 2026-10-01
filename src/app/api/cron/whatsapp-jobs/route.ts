@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
+import { recordAppointmentEvent } from "@/lib/appointmentEvents";
+import { absoluteUrl } from "@/lib/appUrl";
 
 /**
  * GET /api/cron/whatsapp-jobs
@@ -110,6 +112,13 @@ async function handleNoShows() {
         data: { status: "CANCELLED", noShowHandledAt: now },
       });
       await cancelPendingWhatsAppJobs(appt.id);
+      await recordAppointmentEvent({
+        salonId: appt.salonId,
+        appointmentId: appt.id,
+        type: "CANCELLED",
+        actor: "SYSTEM",
+        note: "Liberado automaticamente por falta de confirmação de presença",
+      });
       released += 1;
     } else {
       await prisma.appointment.update({
@@ -125,13 +134,18 @@ async function handleNoShows() {
 
 async function sendWhatsAppMessage(
   job: Awaited<ReturnType<typeof prisma.whatsAppMessageJob.findMany>>[number] & {
-    appointment: { accessToken: string; startAt: Date; client: { name: string; phone: string } };
+    appointment: {
+      accessToken: string;
+      startAt: Date;
+      client: { name: string; phone: string };
+      salon: { slug: string };
+    };
   }
 ) {
   // TODO: integrar de verdade com a Meta Cloud API (ou provedor equivalente).
   // Por enquanto, só a estrutura da mensagem por tipo — o envio real fica
   // pra quando a conta de WhatsApp Business estiver configurada.
-  const manageLink = `https://SEU_DOMINIO/agendamento/${job.appointment.accessToken}`;
+  const manageLink = absoluteUrl(`/${job.appointment.salon.slug}/agendamento/${job.appointment.accessToken}`);
 
   const messages: Record<string, string> = {
     BOOKING_CONFIRMATION: `Seu agendamento foi confirmado! Gerencie aqui: ${manageLink}`,

@@ -9,9 +9,14 @@ export async function resetDb() {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
       "whatsapp_message_jobs",
+      "appointment_events",
+      "product_reservations",
+      "products",
+      "message_templates",
       "appointments",
       "service_professionals",
       "availability_exceptions",
+      "agenda_blocks",
       "availabilities",
       "clients",
       "services",
@@ -51,6 +56,21 @@ export async function createTestSalon(
     data: { salonId: salon.id, name: "Corte", durationMinutes: 30, priceCents: 5000 },
   });
 
+  // Vínculo profissional <-> serviço e disponibilidade o dia inteiro em
+  // todos os dias da semana: por padrão os testes não querem testar a grade
+  // de horários, só o fluxo de agendamento em si (ver `booking.ts`).
+  await prisma.serviceProfessional.create({
+    data: { serviceId: service.id, professionalId: professional.id },
+  });
+  await prisma.availability.createMany({
+    data: Array.from({ length: 7 }, (_, weekday) => ({
+      professionalId: professional.id,
+      weekday,
+      startTime: "00:00",
+      endTime: "23:59",
+    })),
+  });
+
   await prisma.presenceConfirmationConfig.create({
     data: {
       salonId: salon.id,
@@ -60,4 +80,15 @@ export async function createTestSalon(
   });
 
   return { owner, salon, professional, service };
+}
+
+/**
+ * Horário futuro alinhado à grade de 20 em 20 min de `getAvailableSlots`
+ * (`src/lib/slots.ts`) — necessário desde que `booking.ts` passou a validar
+ * que o horário do fluxo público está mesmo entre os horários livres.
+ */
+export function futureSlotTime(hoursFromNow: number) {
+  const d = new Date(Date.now() + hoursFromNow * 60 * 60_000);
+  d.setUTCMinutes(Math.ceil(d.getUTCMinutes() / 20) * 20, 0, 0);
+  return d;
 }

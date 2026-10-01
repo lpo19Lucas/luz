@@ -9,7 +9,12 @@ const STEP_MINUTES = 20;
  * existentes (ver arquitetura-modelo-de-dados.md, seção 4). Grade fixa de
  * 20 em 20 minutos: simples e suficiente pro volume esperado do MVP.
  */
-export async function getAvailableSlots(professionalId: string, serviceId: string, date: Date) {
+export async function getAvailableSlots(
+  professionalId: string,
+  serviceId: string,
+  date: Date,
+  excludeAppointmentId?: string
+) {
   const service = await prisma.service.findUnique({ where: { id: serviceId } });
   if (!service) return [];
 
@@ -20,7 +25,12 @@ export async function getAvailableSlots(professionalId: string, serviceId: strin
     prisma.availability.findMany({ where: { professionalId, weekday: salonWeekday(date) } }),
     prisma.availabilityException.findMany({ where: { professionalId, date: dayStart } }),
     prisma.appointment.findMany({
-      where: { professionalId, status: { not: "CANCELLED" }, startAt: { gte: dayStart, lte: dayEnd } },
+      where: {
+        professionalId,
+        status: { not: "CANCELLED" },
+        startAt: { gte: dayStart, lte: dayEnd },
+        ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
+      },
     }),
   ]);
 
