@@ -201,15 +201,39 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
         <Header salonName={salon.name} />
-        <Box sx={{ maxWidth: 480, mx: "auto", p: 3 }}>
-          <Alert severity="success" sx={{ mb: 2 }}>
+        <Box sx={{ maxWidth: 480, mx: "auto", p: 3, textAlign: "center" }}>
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              bgcolor: "secondary.main",
+              color: "primary.main",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 28,
+              fontWeight: 700,
+              mx: "auto",
+              mb: 2,
+            }}
+          >
+            ✓
+          </Box>
+          <Typography variant="h6" sx={{ mb: 1 }}>
             Agendamento confirmado!
-          </Alert>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Guarde este link para gerenciar seu agendamento (cancelar ou confirmar presença):
           </Typography>
-          <Paper variant="outlined" sx={{ p: 1.5, wordBreak: "break-all", fontSize: 13 }}>
-            <a href={manageUrl}>{typeof window !== "undefined" ? window.location.origin : ""}{manageUrl}</a>
+          <Paper
+            variant="outlined"
+            sx={{ p: 1.5, wordBreak: "break-all", fontSize: 13, borderRadius: 3, bgcolor: "#FAF7F2" }}
+          >
+            <a href={manageUrl} style={{ color: "#1B2A4A" }}>
+              {typeof window !== "undefined" ? window.location.origin : ""}
+              {manageUrl}
+            </a>
           </Paper>
         </Box>
       </Box>
@@ -230,16 +254,19 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                   href={`/${salonSlug}/agendamento/${appt.accessToken}`}
                   variant="outlined"
                   sx={{
-                    p: 1.25,
+                    p: 1.5,
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                     textDecoration: "none",
                     color: "inherit",
+                    borderRadius: 3,
+                    transition: "transform .15s ease",
+                    "&:hover": { transform: "translateY(-2px)" },
                   }}
                 >
                   <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
                       {appt.serviceName} com {appt.professionalName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -259,59 +286,76 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
         )}
 
         <Section title="Profissional">
-          <Stack direction="row" spacing={1.5}>
-            {salon.professionals.map((p) => (
-              <Box
-                key={p.id}
-                onClick={() => setProfessionalId(p.id)}
-                sx={{
-                  flex: 1,
-                  textAlign: "center",
-                  p: 1,
-                  borderRadius: 1,
-                  cursor: "pointer",
-                  bgcolor: professionalId === p.id ? "#E7E9F3" : "transparent",
-                }}
-              >
-                <Avatar sx={{ mx: "auto", mb: 0.5, bgcolor: "primary.main" }}>
-                  {p.name.charAt(0).toUpperCase()}
-                </Avatar>
-                <Typography variant="caption">{p.name}</Typography>
-              </Box>
-            ))}
+          <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", gap: 1.5 }}>
+            {salon.professionals.map((p) => {
+              const selected = professionalId === p.id;
+              return (
+                <Box
+                  key={p.id}
+                  onClick={() => setProfessionalId(p.id)}
+                  sx={{
+                    flex: "1 1 72px",
+                    textAlign: "center",
+                    py: 1.25,
+                    px: 0.5,
+                    borderRadius: 3,
+                    cursor: "pointer",
+                    border: "2px solid",
+                    borderColor: selected ? "secondary.main" : "transparent",
+                    bgcolor: selected ? "#FBF6E6" : "transparent",
+                    transition: "transform .15s ease, border-color .15s ease",
+                    "&:hover": { transform: "translateY(-2px)" },
+                  }}
+                >
+                  <Avatar sx={{ mx: "auto", mb: 0.5, bgcolor: "primary.main", fontWeight: 700 }}>
+                    {p.name.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <Typography variant="caption" sx={{ fontWeight: selected ? 700 : 500 }}>
+                    {p.name}
+                  </Typography>
+                </Box>
+              );
+            })}
           </Stack>
         </Section>
 
         <Section title="Serviço">
-          <Stack spacing={1}>
-            {availableServices.map((s) => (
-              <Paper
-                key={s.id}
-                variant="outlined"
-                onClick={() => setServiceId(s.id)}
-                sx={{
-                  p: 1.5,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  cursor: "pointer",
-                  borderColor: serviceId === s.id ? "primary.main" : "divider",
-                  bgcolor: serviceId === s.id ? "#E7E9F3" : "transparent",
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {s.name}
+          <Stack spacing={1.25}>
+            {availableServices.map((s) => {
+              const selected = serviceId === s.id;
+              return (
+                <Paper
+                  key={s.id}
+                  variant="outlined"
+                  onClick={() => setServiceId(s.id)}
+                  sx={{
+                    p: 1.75,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    borderRadius: 3,
+                    borderWidth: 2,
+                    borderColor: selected ? "secondary.main" : "divider",
+                    bgcolor: selected ? "#FBF6E6" : "transparent",
+                    transition: "transform .15s ease, box-shadow .15s ease",
+                    "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(27,42,74,.08)" },
+                  }}
+                >
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                      {s.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {s.durationMinutes} min
+                    </Typography>
+                  </Box>
+                  <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
+                    {formatPrice(s.priceCents)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {s.durationMinutes} min
-                  </Typography>
-                </Box>
-                <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
-                  {formatPrice(s.priceCents)}
-                </Typography>
-              </Paper>
-            ))}
+                </Paper>
+              );
+            })}
           </Stack>
         </Section>
 
@@ -326,22 +370,29 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
         </Section>
 
         <Section title="Horário">
-          {loadingSlots && <CircularProgress size={20} />}
+          {loadingSlots && <CircularProgress size={20} sx={{ color: "secondary.main" }} />}
           {!loadingSlots && slots.length === 0 && (
             <Typography variant="body2" color="text.secondary">
               Nenhum horário livre nesse dia.
             </Typography>
           )}
           <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-            {slots.map((slot) => (
-              <Chip
-                key={slot}
-                label={new Date(slot).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                onClick={() => setSelectedSlot(slot)}
-                color={selectedSlot === slot ? "primary" : "default"}
-                variant={selectedSlot === slot ? "filled" : "outlined"}
-              />
-            ))}
+            {slots.map((slot) => {
+              const selected = selectedSlot === slot;
+              return (
+                <Chip
+                  key={slot}
+                  label={new Date(slot).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                  onClick={() => setSelectedSlot(slot)}
+                  sx={{
+                    bgcolor: selected ? "primary.main" : "#FFFFFF",
+                    color: selected ? "secondary.main" : "primary.main",
+                    border: "1.5px solid",
+                    borderColor: selected ? "primary.main" : "divider",
+                  }}
+                />
+              );
+            })}
           </Stack>
         </Section>
 
@@ -368,11 +419,24 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                 label={`Usar meu pacote "${usablePackage.name}" nesse agendamento`}
               />
             )}
-            {submitError && <Alert severity="error">{submitError}</Alert>}
+            {submitError && (
+              <Alert severity="error" sx={{ borderRadius: 2 }}>
+                {submitError}
+              </Alert>
+            )}
             <Button
               variant="contained"
+              size="large"
               disabled={!selectedSlot || !clientName || !clientPhone || submitting}
               onClick={handleSubmit}
+              sx={{
+                bgcolor: "secondary.main",
+                color: "primary.main",
+                py: 1.5,
+                fontSize: 15,
+                "&:hover": { bgcolor: "secondary.dark" },
+                "&.Mui-disabled": { bgcolor: "#E9E3D2", color: "#B0A98C" },
+              }}
             >
               {submitting ? "Agendando..." : "Confirmar agendamento"}
             </Button>
@@ -385,10 +449,16 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
 
 function Header({ salonName }: { salonName: string }) {
   return (
-    <AppBar position="static" elevation={0}>
-      <Toolbar sx={{ flexDirection: "column", alignItems: "flex-start", py: 1.5 }}>
-        <Typography variant="h6">{salonName}</Typography>
-        <Typography variant="caption" sx={{ opacity: 0.85 }}>
+    <AppBar
+      position="static"
+      elevation={0}
+      sx={{ bgcolor: "primary.main", backgroundImage: "linear-gradient(135deg,#1B2A4A,#2E4472)" }}
+    >
+      <Toolbar sx={{ flexDirection: "column", alignItems: "flex-start", py: 2.5 }}>
+        <Typography variant="h6" sx={{ color: "#FAF7F2" }}>
+          {salonName}
+        </Typography>
+        <Typography variant="caption" sx={{ color: "#D4AF37", fontWeight: 600 }}>
           Escolha o profissional, serviço e horário
         </Typography>
       </Toolbar>
@@ -398,11 +468,10 @@ function Header({ salonName }: { salonName: string }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Box sx={{ mb: 2.5 }}>
+    <Box sx={{ mb: 3 }}>
       <Typography
         variant="overline"
-        color="text.secondary"
-        sx={{ display: "block", mb: 1, letterSpacing: 0.5 }}
+        sx={{ display: "block", mb: 1.25, letterSpacing: 1, fontWeight: 700, color: "secondary.dark" }}
       >
         {title}
       </Typography>
