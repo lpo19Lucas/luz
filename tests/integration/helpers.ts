@@ -34,7 +34,7 @@ export async function resetDb() {
  * rota de agendamento precisa pra funcionar, pra não repetir isso em cada teste.
  */
 export async function createTestSalon(
-  overrides: { presenceConfirmationEnabled?: boolean } = {}
+  overrides: { presenceConfirmationEnabled?: boolean; published?: boolean } = {}
 ) {
   const owner = await prisma.user.create({
     data: {
@@ -45,7 +45,15 @@ export async function createTestSalon(
   });
 
   const salon = await prisma.salon.create({
-    data: { name: "Salão Teste", slug: `salao-teste-${Date.now()}-${Math.random()}`, ownerId: owner.id },
+    data: {
+      name: "Salão Teste",
+      slug: `salao-teste-${Date.now()}-${Math.random()}`,
+      ownerId: owner.id,
+      // Publicado por padrão (F12): a maioria dos testes é sobre o fluxo de
+      // agendamento em si, não sobre o onboarding. Passe `published: false`
+      // pra testar o bloqueio do link público antes de publicar.
+      publishedAt: overrides.published === false ? null : new Date(),
+    },
   });
 
   const professional = await prisma.professional.create({

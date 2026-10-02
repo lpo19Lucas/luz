@@ -14,6 +14,7 @@ const STATUS_AND_MESSAGE: Record<BookingErrorCode, [number, string]> = {
   CANNOT_CONFIRM: [409, "Esse agendamento não pode mais ser confirmado"],
   CANNOT_RESCHEDULE: [409, "Esse agendamento não pode mais ser reagendado"],
   PAST_SLOT: [400, "Horário inválido ou no passado"],
+  SALON_NOT_PUBLISHED: [409, "Agenda temporariamente indisponível"],
 };
 
 /** Traduz um erro do fluxo de agendamento pra uma resposta HTTP — usado pelas rotas públicas. */

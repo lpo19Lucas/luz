@@ -22,7 +22,8 @@ export type BookingErrorCode =
   | "ALREADY_FINISHED"
   | "CANNOT_CONFIRM"
   | "CANNOT_RESCHEDULE"
-  | "PAST_SLOT";
+  | "PAST_SLOT"
+  | "SALON_NOT_PUBLISHED";
 
 /**
  * Erro de negócio do fluxo de agendamento — as rotas e as actions traduzem o
@@ -142,6 +143,11 @@ export async function createAppointment(params: {
 }) {
   const salon = await prisma.salon.findUnique({ where: { slug: params.salonSlug } });
   if (!salon) throw new BookingError("SALON_NOT_FOUND");
+  // F12: o link público só aceita agendamento depois de publicado. O dono
+  // (source OWNER) pode agendar manualmente mesmo antes disso.
+  if (params.source === "ONLINE" && !salon.publishedAt) {
+    throw new BookingError("SALON_NOT_PUBLISHED");
+  }
 
   const service = await prisma.service.findFirst({
     where: { id: params.serviceId, salonId: salon.id },

@@ -2,9 +2,11 @@
 // salão (F3): capa, descrição, endereço, redes sociais e WhatsApp, com o
 // tema aplicando as cores escolhidas pelo dono.
 import { notFound } from "next/navigation";
-import { Box, Typography, Stack, Button } from "@mui/material";
+import Link from "next/link";
+import { Box, Typography, Stack, Button, Alert } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { whatsappLink } from "@/lib/phone";
+import { getSession } from "@/lib/auth";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 
@@ -30,6 +32,12 @@ export default async function BookingPage({
   const { salonSlug } = await params;
   const salon = await prisma.salon.findUnique({ where: { slug: salonSlug } });
   if (!salon) notFound();
+
+  // F12: link público só abre pra clientes depois de publicado. O dono
+  // logado continua vendo uma prévia (com aviso) mesmo antes disso.
+  const session = await getSession();
+  const isOwnerPreview = session?.userId === salon.ownerId;
+  const isBlocked = !salon.publishedAt && !isOwnerPreview;
 
   const address = formatAddress(salon);
   const hasSocial = salon.instagramUrl || salon.facebookUrl || salon.tiktokUrl || salon.websiteUrl;
@@ -100,7 +108,31 @@ export default async function BookingPage({
           </Box>
         )}
 
-        <BookingClient salonSlug={salonSlug} />
+        {!salon.publishedAt && isOwnerPreview && (
+          <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 2 }}>
+            <Alert severity="warning">
+              Prévia: esse link ainda não foi publicado. Só você (logado) está vendo essa página —
+              clientes veem &ldquo;agenda indisponível&rdquo;. Publique em{" "}
+              <Link href="/inicio" style={{ color: "inherit" }}>
+                Primeiros passos
+              </Link>
+              .
+            </Alert>
+          </Box>
+        )}
+
+        {isBlocked ? (
+          <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 4, textAlign: "center" }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Agenda temporariamente indisponível
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Esse salão ainda está configurando a agenda online. Tente de novo mais tarde.
+            </Typography>
+          </Box>
+        ) : (
+          <BookingClient salonSlug={salonSlug} />
+        )}
       </Box>
     </SalonThemeProvider>
   );

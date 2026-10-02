@@ -4,6 +4,7 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { logoutAction } from "@/lib/actions/auth";
 
 const NAV_ITEMS = [
+  { href: "/inicio", label: "Início" },
   { href: "/agenda", label: "Agenda" },
   { href: "/profissionais", label: "Profissionais" },
   { href: "/servicos", label: "Serviços" },

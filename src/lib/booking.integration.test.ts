@@ -132,6 +132,42 @@ describe("createAppointment", () => {
     expect(appointment.startAt.getTime()).toBe(startAt.getTime());
   });
 
+  it("recusa agendamento ONLINE num salão ainda não publicado (F12)", async () => {
+    const { salon, professional, service } = await createTestSalon({ published: false });
+
+    await expect(
+      createAppointment({
+        salonSlug: salon.slug,
+        professionalId: professional.id,
+        serviceId: service.id,
+        clientName: "Cliente",
+        clientPhone: "11999990000",
+        startAt: futureSlotTime(24),
+        wantsToPayNow: false,
+        source: "ONLINE",
+        actor: "CLIENT",
+      })
+    ).rejects.toThrow(new BookingError("SALON_NOT_PUBLISHED"));
+  });
+
+  it("permite agendamento OWNER mesmo num salão ainda não publicado", async () => {
+    const { salon, professional, service } = await createTestSalon({ published: false });
+
+    const { appointment } = await createAppointment({
+      salonSlug: salon.slug,
+      professionalId: professional.id,
+      serviceId: service.id,
+      clientName: "Cliente",
+      clientPhone: "11999990000",
+      startAt: futureSlotTime(24),
+      wantsToPayNow: false,
+      source: "OWNER",
+      actor: "OWNER",
+    });
+
+    expect(appointment.id).toBeTruthy();
+  });
+
   it("recusa cliente banido com mensagem neutra", async () => {
     const { salon, professional, service } = await createTestSalon();
     await prisma.client.create({

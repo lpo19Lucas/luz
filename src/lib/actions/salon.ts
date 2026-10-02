@@ -74,6 +74,21 @@ export async function updateSalonProfileAction(formData: FormData) {
   revalidatePath(`/${salon.slug}`);
 }
 
+/**
+ * F12: publica o link público — só depois disso o salão aceita agendamento
+ * online (ver booking.ts, createAppointment com source ONLINE). O dono
+ * logado sempre vê a própria página pública em prévia, publicado ou não
+ * (ver src/app/(public)/[salonSlug]/page.tsx).
+ */
+export async function publishSalonAction() {
+  const salon = await getCurrentSalon();
+  if (salon.publishedAt) return;
+
+  await prisma.salon.update({ where: { id: salon.id }, data: { publishedAt: new Date() } });
+  revalidatePath("/inicio");
+  revalidatePath(`/${salon.slug}`);
+}
+
 export async function updatePresenceConfirmationConfig(formData: FormData) {
   const enabled = formData.get("enabled") === "on";
   const hoursBefore = Number(formData.get("hoursBefore"));

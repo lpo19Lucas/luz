@@ -61,7 +61,7 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
   });
 
   await createSession(user.id);
-  redirect("/agenda");
+  redirect("/inicio");
 }
 
 export async function logoutAction() {
