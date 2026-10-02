@@ -6,7 +6,7 @@ FROM node:20-alpine
 # node:20-alpine não vem com OpenSSL — sem isso o motor do Prisma falha ao
 # rodar migrations com "Could not parse schema engine response". Também não
 # vem com tzdata — sem isso TZ=America/Sao_Paulo (docker-compose.yml) é ignorado.
-RUN apk add --no-cache openssl tzdata
+RUN apk add --no-cache openssl tzdata chromium
 
 WORKDIR /app
 
