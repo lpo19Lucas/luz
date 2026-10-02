@@ -13,10 +13,11 @@ import {
   CircularProgress,
   Alert,
   TextField,
+  Rating,
 } from "@mui/material";
 
 type AppointmentDetails = {
-  status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED";
+  status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   startAt: string;
   salonName: string;
   salonSlug: string;
@@ -25,6 +26,8 @@ type AppointmentDetails = {
   serviceId: string;
   serviceName: string;
   clientName: string;
+  hasReview: boolean;
+  canReview: boolean;
 };
 
 const STATUS_LABEL: Record<AppointmentDetails["status"], string> = {
@@ -32,6 +35,7 @@ const STATUS_LABEL: Record<AppointmentDetails["status"], string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
+  NO_SHOW: "Não compareceu",
 };
 
 function todayISODate() {
@@ -51,6 +55,11 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [reschedulingSubmitting, setReschedulingSubmitting] = useState(false);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+
+  const [reviewRating, setReviewRating] = useState<number | null>(null);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch(`/api/appointments/${accessToken}`)
@@ -116,6 +125,27 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
     }
   }
 
+  async function handleSubmitReview() {
+    if (!reviewRating) return;
+    setReviewSubmitting(true);
+    setReviewError(null);
+    try {
+      const res = await fetch(`/api/appointments/${accessToken}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setReviewError(data.error ?? "Não foi possível enviar a avaliação.");
+        return;
+      }
+      load();
+    } finally {
+      setReviewSubmitting(false);
+    }
+  }
+
   if (error) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
@@ -178,6 +208,44 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
           <Alert severity="warning" sx={{ mb: 2 }}>
             {actionMessage}
           </Alert>
+        )}
+
+        {appointment.hasReview && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Você já avaliou este atendimento, obrigado!
+          </Alert>
+        )}
+
+        {appointment.canReview && (
+          <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Avalie seu atendimento
+            </Typography>
+            <Stack spacing={1.5} alignItems="flex-start">
+              <Rating
+                value={reviewRating}
+                onChange={(_e, value) => setReviewRating(value)}
+                disabled={reviewSubmitting}
+              />
+              <TextField
+                multiline
+                minRows={2}
+                fullWidth
+                placeholder="Comentário (opcional)"
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                disabled={reviewSubmitting}
+              />
+              {reviewError && <Alert severity="error">{reviewError}</Alert>}
+              <Button
+                variant="contained"
+                disabled={!reviewRating || reviewSubmitting}
+                onClick={handleSubmitReview}
+              >
+                {reviewSubmitting ? "Enviando..." : "Enviar avaliação"}
+              </Button>
+            </Stack>
+          </Paper>
         )}
 
         {!reschedulingOpen && (

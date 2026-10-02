@@ -3,22 +3,106 @@
 import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
+import { setAppointmentOutcomeAction, cancelAppointmentOwnerAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
-import { salonMidnightUTC, salonEndOfDayUTC, formatSalonDate, formatSalonTime } from "@/lib/timezone";
+import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, formatSalonDate, formatSalonTime } from "@/lib/timezone";
+import { getAgendaKpis, type AgendaKpis } from "@/lib/agendaKpis";
+
+function formatPrice(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Cabeçalho de KPIs do dia e da semana (F2) — agendados, concluídos, faltas,
+ * faturamento previsto/realizado e ocupação. */
+function KpiHeader({ title, kpis }: { title: string; kpis: AgendaKpis }) {
+  const occupancy =
+    kpis.availableMinutes > 0 ? Math.round((kpis.occupiedMinutes / kpis.availableMinutes) * 100) : 0;
+
+  const items: Array<{ label: string; value: string }> = [
+    { label: "Agendados", value: String(kpis.scheduledCount) },
+    { label: "Concluídos", value: String(kpis.completedCount) },
+    { label: "Faltas", value: String(kpis.noShowCount) },
+    { label: "Faturamento previsto", value: formatPrice(kpis.expectedRevenueCents) },
+    { label: "Faturamento realizado", value: formatPrice(kpis.realizedRevenueCents) },
+    { label: "Ocupação", value: `${occupancy}%` },
+  ];
+
+  return (
+    <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 500, mb: 1.5 }}>
+        {title}
+      </Typography>
+      <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
+        {items.map((item) => (
+          <Box key={item.label} sx={{ minWidth: 120 }}>
+            <Typography variant="caption" color="text.secondary" display="block">
+              {item.label}
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              {item.value}
+            </Typography>
+          </Box>
+        ))}
+      </Stack>
+    </Paper>
+  );
+}
 
 const STATUS_LABEL: Record<string, string> = {
   AWAITING_CONFIRMATION: "Aguardando confirmação",
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
+  NO_SHOW: "Não compareceu",
 };
 
-const STATUS_COLOR: Record<string, "warning" | "primary" | "default" | "success"> = {
+const STATUS_COLOR: Record<string, "warning" | "primary" | "default" | "success" | "error"> = {
   AWAITING_CONFIRMATION: "warning",
   CONFIRMED: "primary",
   CANCELLED: "default",
   COMPLETED: "success",
+  NO_SHOW: "error",
 };
+
+/** Botão de um formulário que chama a server action de desfecho do atendimento. */
+function OutcomeButton({
+  appointmentId,
+  outcome,
+  label,
+  color,
+}: {
+  appointmentId: string;
+  outcome: "COMPLETED" | "NO_SHOW" | "PENDING";
+  label: string;
+  color: "success" | "error" | "inherit";
+}) {
+  return (
+    <form action={setAppointmentOutcomeAction}>
+      <input type="hidden" name="appointmentId" value={appointmentId} />
+      <input type="hidden" name="outcome" value={outcome} />
+      <Button type="submit" size="small" color={color} sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}>
+        {label}
+      </Button>
+    </form>
+  );
+}
+
+/** Botão "Cancelar" (B3) — cancelamento pelo dono, mesma regra de negócio do cliente. */
+function CancelButton({ appointmentId }: { appointmentId: string }) {
+  return (
+    <form action={cancelAppointmentOwnerAction}>
+      <input type="hidden" name="appointmentId" value={appointmentId} />
+      <Button
+        type="submit"
+        size="small"
+        color="inherit"
+        sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}
+      >
+        Cancelar
+      </Button>
+    </form>
+  );
+}
 
 function parseDate(value?: string) {
   if (!value) return new Date();
@@ -48,6 +132,15 @@ export default async function AgendaPage({
   const dayStart = salonMidnightUTC(date);
   const dayEnd = salonEndOfDayUTC(date);
 
+  const weekday = salonWeekday(date);
+  const weekStart = salonMidnightUTC(addDays(date, -weekday));
+  const weekEnd = salonEndOfDayUTC(addDays(date, 6 - weekday));
+
+  const [dayKpis, weekKpis] = await Promise.all([
+    getAgendaKpis(salon.id, dayStart, dayEnd),
+    getAgendaKpis(salon.id, weekStart, weekEnd),
+  ]);
+
   const professionals = await prisma.professional.findMany({
     where: { salonId: salon.id, active: true },
     include: {
@@ -59,6 +152,8 @@ export default async function AgendaPage({
     },
     orderBy: { name: "asc" },
   });
+
+  const now = new Date();
 
   const dateLabel = formatSalonDate(date, {
     weekday: "long",
@@ -82,8 +177,19 @@ export default async function AgendaPage({
           <Button component={Link} href={`/agenda?date=${toISODate(addDays(date, 1))}`} size="small">
             Próximo dia →
           </Button>
+          <Button
+            component={Link}
+            href={`/agenda/novo?date=${toISODate(date)}`}
+            size="small"
+            variant="contained"
+          >
+            + Novo agendamento
+          </Button>
         </Stack>
       </Stack>
+
+      <KpiHeader title="Dia selecionado" kpis={dayKpis} />
+      <KpiHeader title="Esta semana" kpis={weekKpis} />
 
       {professionals.length === 0 && (
         <Typography color="text.secondary">Nenhum profissional cadastrado ainda.</Typography>
@@ -92,9 +198,18 @@ export default async function AgendaPage({
       <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
         {professionals.map((prof) => (
           <Paper key={prof.id} elevation={1} sx={{ p: 2, flex: "1 1 260px", minWidth: 240 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
-              {prof.name}
-            </Typography>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                {prof.name}
+              </Typography>
+              <Button
+                component={Link}
+                href={`/agenda/novo?professionalId=${prof.id}&date=${toISODate(date)}`}
+                size="small"
+              >
+                + Novo
+              </Button>
+            </Stack>
             {prof.appointments.length === 0 && (
               <Typography variant="body2" color="text.secondary">
                 Sem agendamentos neste dia.
@@ -125,7 +240,7 @@ export default async function AgendaPage({
                       color={STATUS_COLOR[appt.status]}
                       size="small"
                     />
-                    {appt.status === "AWAITING_CONFIRMATION" && appt.noShowHandledAt && (
+                    {appt.status === "AWAITING_CONFIRMATION" && appt.noShowHandledAt && appt.startAt > now && (
                       <Chip
                         label="Cliente não confirmou — ligue ou cancele"
                         color="error"
@@ -133,6 +248,36 @@ export default async function AgendaPage({
                       />
                     )}
                   </Stack>
+                  {/* Antes do horário começar, o dono pode cancelar ou remarcar
+                      (B3) — remarcar reusa a mesma tela do link público do cliente. */}
+                  {appt.startAt > now &&
+                    (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION") && (
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }}>
+                        <CancelButton appointmentId={appt.id} />
+                        <Button
+                          component={Link}
+                          href={`/${salon.slug}/agendamento/${appt.accessToken}`}
+                          size="small"
+                          sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}
+                        >
+                          Remarcar
+                        </Button>
+                      </Stack>
+                    )}
+                  {/* Depois que o horário começa, o dono marca o desfecho — é isso
+                      que alimenta faturamento, ticket médio e taxa de no-show. */}
+                  {appt.startAt <= now &&
+                    (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION") && (
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }}>
+                        <OutcomeButton appointmentId={appt.id} outcome="COMPLETED" label="✓ Concluído" color="success" />
+                        <OutcomeButton appointmentId={appt.id} outcome="NO_SHOW" label="✗ Não compareceu" color="error" />
+                      </Stack>
+                    )}
+                  {(appt.status === "COMPLETED" || appt.status === "NO_SHOW") && (
+                    <Box sx={{ mt: 0.5 }}>
+                      <OutcomeButton appointmentId={appt.id} outcome="PENDING" label="Desfazer" color="inherit" />
+                    </Box>
+                  )}
                 </Box>
               ))}
             </Stack>

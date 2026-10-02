@@ -7,7 +7,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { resetDb, createTestSalon } from "@tests/integration/helpers";
+import { resetDb, createTestSalon, futureSlotTime } from "@tests/integration/helpers";
 import { POST } from "./route";
 
 beforeEach(async () => {
@@ -29,7 +29,7 @@ function postAppointment(slug: string, body: Record<string, unknown>) {
 describe("POST /api/salons/[salonSlug]/appointments", () => {
   it("cria o agendamento e agenda os jobs de WhatsApp quando não há conflito", async () => {
     const { salon, professional, service } = await createTestSalon();
-    const startAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    const startAt = futureSlotTime(24).toISOString();
 
     const res = await postAppointment(salon.slug, {
       professionalId: professional.id,
@@ -57,7 +57,7 @@ describe("POST /api/salons/[salonSlug]/appointments", () => {
     const { salon, professional, service } = await createTestSalon({
       presenceConfirmationEnabled: false,
     });
-    const startAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    const startAt = futureSlotTime(24).toISOString();
 
     const res = await postAppointment(salon.slug, {
       professionalId: professional.id,
@@ -77,7 +77,7 @@ describe("POST /api/salons/[salonSlug]/appointments", () => {
 
   it("rejeita com 409 quando o horário já está ocupado pelo mesmo profissional", async () => {
     const { salon, professional, service } = await createTestSalon();
-    const startAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    const startAt = futureSlotTime(24).toISOString();
 
     const first = await postAppointment(salon.slug, {
       professionalId: professional.id,
@@ -107,7 +107,18 @@ describe("POST /api/salons/[salonSlug]/appointments", () => {
     const otherProfessional = await prisma.professional.create({
       data: { salonId: salon.id, name: "Outro Profissional" },
     });
-    const startAt = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    await prisma.serviceProfessional.create({
+      data: { serviceId: service.id, professionalId: otherProfessional.id },
+    });
+    await prisma.availability.createMany({
+      data: Array.from({ length: 7 }, (_, weekday) => ({
+        professionalId: otherProfessional.id,
+        weekday,
+        startTime: "00:00",
+        endTime: "23:59",
+      })),
+    });
+    const startAt = futureSlotTime(24).toISOString();
 
     const first = await postAppointment(salon.slug, {
       professionalId: professional.id,
@@ -132,8 +143,8 @@ describe("POST /api/salons/[salonSlug]/appointments", () => {
 
   it("upsert de cliente: mesmo telefone no mesmo salão não duplica o Client", async () => {
     const { salon, professional, service } = await createTestSalon();
-    const startAt1 = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
-    const startAt2 = new Date(Date.now() + 48 * 60 * 60_000).toISOString();
+    const startAt1 = futureSlotTime(24).toISOString();
+    const startAt2 = futureSlotTime(48).toISOString();
 
     await postAppointment(salon.slug, {
       professionalId: professional.id,
@@ -178,7 +189,7 @@ describe("POST /api/salons/[salonSlug]/appointments", () => {
       serviceId: servicoDeOutroSalao.id,
       clientName: "Cliente",
       clientPhone: "11999990000",
-      startAt: new Date(Date.now() + 24 * 60 * 60_000).toISOString(),
+      startAt: futureSlotTime(24).toISOString(),
       wantsToPayNow: false,
     });
     expect(res.status).toBe(400);

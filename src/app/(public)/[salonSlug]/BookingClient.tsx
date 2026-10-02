@@ -14,6 +14,8 @@ import {
   Button,
   CircularProgress,
   Alert,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import Link from "next/link";
 import {
@@ -40,6 +42,7 @@ const STATUS_LABEL: Record<string, string> = {
   CONFIRMED: "Confirmado",
   CANCELLED: "Cancelado",
   COMPLETED: "Concluído",
+  NO_SHOW: "Não compareceu",
 };
 
 function formatPrice(cents: number) {
@@ -68,6 +71,9 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   const [manageUrl, setManageUrl] = useState<string | null>(null);
 
   const [myAppointments, setMyAppointments] = useState<MyAppointment[]>([]);
+
+  const [usablePackage, setUsablePackage] = useState<{ id: string; name: string } | null>(null);
+  const [usePackage, setUsePackage] = useState(false);
 
   // Cache local: pré-preenche com o nome/telefone da última vez que esse
   // navegador agendou nesse salão, e recupera os links dos agendamentos já
@@ -129,6 +135,21 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
       .finally(() => setLoadingSlots(false));
   }, [professionalId, serviceId, date, salonSlug]);
 
+  // Checa se o telefone digitado tem pacote utilizável pro serviço escolhido —
+  // só dispara com telefone plausível, pra não bater na API a cada tecla.
+  useEffect(() => {
+    setUsablePackage(null);
+    setUsePackage(false);
+    if (!serviceId || clientPhone.replace(/\D/g, "").length < 10) return;
+    const timeout = setTimeout(() => {
+      fetch(`/api/salons/${salonSlug}/usable-package?phone=${encodeURIComponent(clientPhone)}&serviceId=${serviceId}`)
+        .then((r) => r.json())
+        .then((data: { usablePackage: { id: string; name: string } | null }) => setUsablePackage(data.usablePackage))
+        .catch(() => setUsablePackage(null));
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [clientPhone, serviceId, salonSlug]);
+
   async function handleSubmit() {
     if (!professionalId || !serviceId || !selectedSlot || !clientName || !clientPhone) return;
     setSubmitting(true);
@@ -144,6 +165,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
           clientPhone,
           startAt: selectedSlot,
           wantsToPayNow: false,
+          usePackageId: usePackage && usablePackage ? usablePackage.id : undefined,
         }),
       });
       const data = await res.json();
@@ -340,6 +362,12 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
               onChange={(e) => setClientPhone(e.target.value)}
               fullWidth
             />
+            {usablePackage && (
+              <FormControlLabel
+                control={<Checkbox checked={usePackage} onChange={(e) => setUsePackage(e.target.checked)} />}
+                label={`Usar meu pacote "${usablePackage.name}" nesse agendamento`}
+              />
+            )}
             {submitError && <Alert severity="error">{submitError}</Alert>}
             <Button
               variant="contained"

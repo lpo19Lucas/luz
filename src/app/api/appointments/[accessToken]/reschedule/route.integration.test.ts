@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { resetDb, createTestSalon } from "@tests/integration/helpers";
+import { resetDb, createTestSalon, futureSlotTime } from "@tests/integration/helpers";
 import { POST } from "./route";
 
 beforeEach(async () => {
@@ -48,7 +48,7 @@ async function createAppointment(opts: {
 describe("POST /api/appointments/[accessToken]/reschedule", () => {
   it("move o agendamento pro novo horário e mantém o mesmo token", async () => {
     const { appointment } = await createAppointment({});
-    const newStartAt = new Date(Date.now() + 48 * 60 * 60_000).toISOString();
+    const newStartAt = futureSlotTime(48).toISOString();
 
     const res = await postReschedule(appointment.accessToken, { startAt: newStartAt });
     expect(res.status).toBe(200);
@@ -63,7 +63,7 @@ describe("POST /api/appointments/[accessToken]/reschedule", () => {
 
   it("volta pra AWAITING_CONFIRMATION quando a confirmação de presença está habilitada", async () => {
     const { appointment } = await createAppointment({ presenceConfirmationEnabled: true });
-    const newStartAt = new Date(Date.now() + 48 * 60 * 60_000).toISOString();
+    const newStartAt = futureSlotTime(48).toISOString();
 
     const res = await postReschedule(appointment.accessToken, { startAt: newStartAt });
     expect(res.status).toBe(200);
@@ -78,7 +78,7 @@ describe("POST /api/appointments/[accessToken]/reschedule", () => {
       data: { appointmentId: appointment.id, type: "REMINDER", scheduledFor: new Date() },
     });
 
-    const newStartAt = new Date(Date.now() + 48 * 60 * 60_000).toISOString();
+    const newStartAt = futureSlotTime(48).toISOString();
     await postReschedule(appointment.accessToken, { startAt: newStartAt });
 
     const jobs = await prisma.whatsAppMessageJob.findMany({ where: { appointmentId: appointment.id } });
@@ -94,7 +94,7 @@ describe("POST /api/appointments/[accessToken]/reschedule", () => {
     const otherClient = await prisma.client.create({
       data: { salonId: salon.id, name: "Outro Cliente", phone: "11988880000" },
     });
-    const busyStart = new Date(Date.now() + 48 * 60 * 60_000);
+    const busyStart = futureSlotTime(48);
     await prisma.appointment.create({
       data: {
         salonId: salon.id,
@@ -114,7 +114,7 @@ describe("POST /api/appointments/[accessToken]/reschedule", () => {
   it("rejeita com 409 quando o agendamento já está cancelado", async () => {
     const { appointment } = await createAppointment({ status: "CANCELLED" });
     const res = await postReschedule(appointment.accessToken, {
-      startAt: new Date(Date.now() + 48 * 60 * 60_000).toISOString(),
+      startAt: futureSlotTime(48).toISOString(),
     });
     expect(res.status).toBe(409);
   });
@@ -129,7 +129,7 @@ describe("POST /api/appointments/[accessToken]/reschedule", () => {
 
   it("retorna 404 quando o token não existe", async () => {
     const res = await postReschedule("token-inexistente", {
-      startAt: new Date(Date.now() + 48 * 60 * 60_000).toISOString(),
+      startAt: futureSlotTime(48).toISOString(),
     });
     expect(res.status).toBe(404);
   });

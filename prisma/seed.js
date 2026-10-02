@@ -45,6 +45,7 @@ async function main() {
       slug,
       ownerId: owner.id,
       pixKey: "11900001111",
+      publishedAt: new Date(),
     },
   });
 

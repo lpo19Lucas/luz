@@ -5,13 +5,7 @@ import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { setSubscriptionStatusAction } from "@/lib/actions/admin";
 import { formatSalonDate } from "@/lib/timezone";
-
-const PLAN_LABEL: Record<string, string> = {
-  TRIAL: "Trial",
-  MONTHLY: "Mensal",
-  QUARTERLY: "Trimestral",
-  YEARLY: "Anual",
-};
+import { PLAN_LABEL } from "@/lib/plans";
 
 const STATUS_LABEL: Record<string, string> = {
   TRIAL: "Período de teste",

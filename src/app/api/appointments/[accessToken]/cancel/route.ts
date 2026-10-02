@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
+import { cancelAppointmentByToken } from "@/lib/booking";
+import { bookingErrorResponse } from "@/lib/bookingErrors";
 
 /**
  * POST /api/appointments/:accessToken/cancel
@@ -14,23 +14,10 @@ export async function POST(
   { params }: { params: Promise<{ accessToken: string }> }
 ) {
   const { accessToken } = await params;
-  const appointment = await prisma.appointment.findUnique({
-    where: { accessToken },
-  });
-
-  if (!appointment) {
-    return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+  try {
+    await cancelAppointmentByToken({ accessToken, actor: "CLIENT" });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return bookingErrorResponse(err);
   }
-  if (appointment.status === "CANCELLED") {
-    return NextResponse.json({ error: "Agendamento já estava cancelado" }, { status: 409 });
-  }
-
-  await prisma.appointment.update({
-    where: { id: appointment.id },
-    data: { status: "CANCELLED" },
-  });
-
-  await cancelPendingWhatsAppJobs(appointment.id);
-
-  return NextResponse.json({ ok: true });
 }

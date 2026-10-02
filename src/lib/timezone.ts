@@ -30,6 +30,21 @@ export function salonWeekday(dateOnly: Date) {
   return salonMidnightUTC(dateOnly).getUTCDay();
 }
 
+/**
+ * Dia (calendário de Brasília) a que um INSTANTE de verdade pertence —
+ * diferente de `salonMidnightUTC`, que ignora a hora e assume que já
+ * recebeu um "marcador de dia" (Y/M/D direto, hora irrelevante — é assim
+ * que a rota pública de horários e os formulários de data constroem esses
+ * Date). Use isto quando `date` é um horário real (ex.: `Appointment.startAt`),
+ * senão um horário entre 21h e 23h59 de Brasília (00h-02h59 UTC do dia
+ * seguinte) cai no balde de dia errado — foi um bug real descoberto nos
+ * testes de booking.ts com disponibilidade até 23:59.
+ */
+export function salonCalendarDay(instant: Date) {
+  const shifted = new Date(instant.getTime() - SALON_UTC_OFFSET_MS);
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()));
+}
+
 /** Converte um horário "HH:mm" de parede do salão (Brasília) num instante UTC. */
 export function salonWallClockToUTC(dateOnly: Date, hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);

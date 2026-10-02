@@ -32,6 +32,16 @@ export default async function EditarProfissionalPage({
         <Stack component="form" action={updateProfessionalAction} spacing={2}>
           <input type="hidden" name="id" value={professional.id} />
           <TextField name="name" label="Nome" size="small" fullWidth required defaultValue={professional.name} />
+          <TextField
+            name="commissionPercent"
+            label="Comissão (%)"
+            type="number"
+            size="small"
+            fullWidth
+            inputProps={{ min: 0, max: 100, step: "0.1" }}
+            defaultValue={professional.commissionPercent ?? ""}
+            helperText="Opcional — usado no relatório de Comissões"
+          />
           <FormControlLabel
             control={<Checkbox name="active" defaultChecked={professional.active} />}
             label="Ativo (aparece na agenda de agendamento pública)"

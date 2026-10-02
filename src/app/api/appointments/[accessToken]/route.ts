@@ -14,7 +14,7 @@ export async function GET(
   const { accessToken } = await params;
   const appointment = await prisma.appointment.findUnique({
     where: { accessToken },
-    include: { salon: true, professional: true, service: true, client: true },
+    include: { salon: true, professional: true, service: true, client: true, review: true },
   });
 
   if (!appointment) {
@@ -34,5 +34,7 @@ export async function GET(
     serviceName: appointment.service.name,
     clientName: appointment.client.name,
     rescheduledCount: appointment.rescheduledCount,
+    hasReview: appointment.review !== null,
+    canReview: appointment.status === "COMPLETED" && appointment.review === null,
   });
 }

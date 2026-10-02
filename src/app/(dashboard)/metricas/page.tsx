@@ -1,9 +1,11 @@
 // Painel de métricas: faturamento total/por profissional/por serviço (P0.16),
 // ticket médio e taxa de no-show (P1, priorizadas na última revisão da spec).
 // Referência visual: mui-exemplos.html (Exemplo 3).
-import { Box, Typography, Paper, Stack, LinearProgress } from "@mui/material";
+import { Box, Typography, Paper, Stack, LinearProgress, Alert, Button } from "@mui/material";
+import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
+import { AWAITING_OUTCOME_STATUSES } from "@/lib/appointmentOutcome";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -17,11 +19,17 @@ export default async function MetricasPage() {
     include: { service: true, professional: true },
   });
 
-  // No-show: horário já passou, nunca foi marcado como concluído nem cancelado.
+  // No-show: só o que o dono marcou como "Não compareceu" na Agenda.
   const noShowCount = await prisma.appointment.count({
+    where: { salonId: salon.id, status: "NO_SHOW" },
+  });
+
+  // Horário já passou mas o dono ainda não marcou o desfecho — não entra em
+  // nenhuma métrica (nem faturamento, nem no-show) até ser marcado.
+  const awaitingOutcomeCount = await prisma.appointment.count({
     where: {
       salonId: salon.id,
-      status: { in: ["CONFIRMED", "AWAITING_CONFIRMATION"] },
+      status: { in: [...AWAITING_OUTCOME_STATUSES] },
       startAt: { lt: new Date() },
     },
   });
@@ -56,6 +64,23 @@ export default async function MetricasPage() {
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
         Métricas
       </Typography>
+
+      {awaitingOutcomeCount > 0 && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2 }}
+          action={
+            <Button component={Link} href="/agenda" color="inherit" size="small">
+              Ir para a agenda
+            </Button>
+          }
+        >
+          {awaitingOutcomeCount === 1
+            ? "1 atendimento que já passou ainda não foi marcado como concluído ou não compareceu."
+            : `${awaitingOutcomeCount} atendimentos que já passaram ainda não foram marcados como concluídos ou não compareceu.`}{" "}
+          Eles só entram nas métricas depois de marcados.
+        </Alert>
+      )}
 
       <Stack direction="row" spacing={2} sx={{ mb: 3, flexWrap: "wrap" }}>
         {stats.map((s) => (

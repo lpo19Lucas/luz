@@ -71,6 +71,15 @@ export default async function ProfissionaisPage() {
         </Typography>
         <Stack component="form" action={createProfessionalAction} spacing={2}>
           <TextField name="name" label="Nome" size="small" fullWidth required />
+          <TextField
+            name="commissionPercent"
+            label="Comissão (%)"
+            type="number"
+            size="small"
+            fullWidth
+            inputProps={{ min: 0, max: 100, step: "0.1" }}
+            helperText="Opcional — usado no relatório de Comissões"
+          />
           <AvailabilityFields services={services} />
           <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
             Adicionar

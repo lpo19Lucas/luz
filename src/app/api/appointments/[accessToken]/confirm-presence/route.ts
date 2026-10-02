@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { confirmPresenceByToken } from "@/lib/booking";
+import { bookingErrorResponse } from "@/lib/bookingErrors";
 
 /**
  * POST /api/appointments/:accessToken/confirm-presence
@@ -13,24 +14,10 @@ export async function POST(
   { params }: { params: Promise<{ accessToken: string }> }
 ) {
   const { accessToken } = await params;
-  const appointment = await prisma.appointment.findUnique({
-    where: { accessToken },
-  });
-
-  if (!appointment) {
-    return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+  try {
+    await confirmPresenceByToken(accessToken);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return bookingErrorResponse(err);
   }
-  if (appointment.status !== "AWAITING_CONFIRMATION" && appointment.status !== "CONFIRMED") {
-    return NextResponse.json(
-      { error: "Esse agendamento não pode mais ser confirmado" },
-      { status: 409 }
-    );
-  }
-
-  await prisma.appointment.update({
-    where: { id: appointment.id },
-    data: { status: "CONFIRMED" },
-  });
-
-  return NextResponse.json({ ok: true });
 }
