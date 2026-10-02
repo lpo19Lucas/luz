@@ -5,14 +5,20 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Box, Typography, Stack, Button, Alert } from "@mui/material";
+import { Box, Typography, Stack, Button, Alert, Paper, Rating, TextField } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { whatsappLink } from "@/lib/phone";
 import { getSession } from "@/lib/auth";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { absoluteUrl } from "@/lib/appUrl";
+import { getPublicReviews } from "@/lib/reviews";
+import { reservePackagePublicAction } from "@/lib/actions/package";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
+
+function formatPrice(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
 
 const WEEKDAY_SCHEMA = [
   "Sunday",
@@ -94,7 +100,14 @@ export default async function BookingPage({
     ? `/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`
     : null;
 
-  const jsonLd = salon.publishedAt ? await buildHairSalonJsonLd(salon) : null;
+  // Busca sempre (mesmo bloqueado) — é barato, e o JSON-LD precisa das
+  // avaliações mesmo quando a agenda em si está indisponível pro cliente.
+  const [packageDefinitions, publicReviews] = await Promise.all([
+    prisma.packageDefinition.findMany({ where: { salonId: salon.id, active: true }, include: { service: true } }),
+    getPublicReviews(salon.id),
+  ]);
+
+  const jsonLd = salon.publishedAt ? await buildHairSalonJsonLd(salon, publicReviews) : null;
 
   return (
     <>
@@ -203,7 +216,82 @@ export default async function BookingPage({
             </Typography>
           </Box>
         ) : (
-          <BookingClient salonSlug={salonSlug} />
+          <>
+            <BookingClient salonSlug={salonSlug} />
+
+            {packageDefinitions.length > 0 && (
+              <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pb: 3 }}>
+                <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                  Pacotes
+                </Typography>
+                <Stack spacing={1.5}>
+                  {packageDefinitions.map((def) => (
+                    <Paper key={def.id} variant="outlined" sx={{ p: 1.5 }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {def.name}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {def.type === "SERVICE_CREDITS"
+                              ? `${def.credits} usos de ${def.service?.name ?? "serviço"}`
+                              : `Crédito de ${formatPrice(def.valueCents ?? 0)}`}{" "}
+                            · válido {def.validityDays} dias
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
+                          {formatPrice(def.priceCents)}
+                        </Typography>
+                      </Stack>
+                      <Stack component="form" action={reservePackagePublicAction} direction="row" spacing={1}>
+                        <input type="hidden" name="salonSlug" value={salonSlug} />
+                        <input type="hidden" name="packageDefinitionId" value={def.id} />
+                        <TextField name="clientName" label="Nome" size="small" required fullWidth />
+                        <TextField name="clientPhone" label="Telefone" size="small" required fullWidth />
+                        <Button type="submit" variant="outlined" sx={{ flexShrink: 0 }}>
+                          Reservar
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  ))}
+                </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                  A reserva fica pendente até o salão confirmar o pagamento.
+                </Typography>
+              </Box>
+            )}
+
+            {publicReviews.total > 0 && (
+              <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pb: 4 }}>
+                <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                  Avaliações
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+                  <Rating value={publicReviews.averageRating} precision={0.1} readOnly size="small" />
+                  <Typography variant="body2" color="text.secondary">
+                    {publicReviews.averageRating?.toFixed(1)} ({publicReviews.total})
+                  </Typography>
+                </Stack>
+                <Stack spacing={1}>
+                  {publicReviews.reviews.map((r) => (
+                    <Paper key={r.id} variant="outlined" sx={{ p: 1.5 }}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Rating value={r.rating} readOnly size="small" />
+                        <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                          {r.clientName}
+                        </Typography>
+                      </Stack>
+                      {r.comment && (
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          {r.comment}
+                        </Typography>
+                      )}
+                    </Paper>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </>
         )}
       </Box>
       </SalonThemeProvider>
@@ -215,7 +303,10 @@ type SalonWithExtras = NonNullable<Awaited<ReturnType<typeof prisma.salon.findUn
 
 /** JSON-LD HairSalon (F15) — endereço, horários (união das disponibilidades
  * de todos os profissionais), serviços oferecidos e redes sociais. */
-async function buildHairSalonJsonLd(salon: SalonWithExtras) {
+async function buildHairSalonJsonLd(
+  salon: SalonWithExtras,
+  publicReviews: Awaited<ReturnType<typeof getPublicReviews>>
+) {
   const [services, availabilities] = await Promise.all([
     prisma.service.findMany({ where: { salonId: salon.id } }),
     prisma.availability.findMany({ where: { professional: { salonId: salon.id, active: true } } }),
@@ -278,6 +369,15 @@ async function buildHairSalonJsonLd(salon: SalonWithExtras) {
             price: (s.priceCents / 100).toFixed(2),
             priceCurrency: "BRL",
           })),
+        }
+      : {}),
+    ...(publicReviews.total > 0 && publicReviews.averageRating !== null
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: publicReviews.averageRating.toFixed(1),
+            reviewCount: publicReviews.total,
+          },
         }
       : {}),
     ...(faq.length > 0
