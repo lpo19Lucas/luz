@@ -17,6 +17,15 @@ import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 import ReviewsCarousel from "./ReviewsCarousel";
 
+const GALLERY_GRADIENTS = [
+  "linear-gradient(160deg,#E8C9A0,#D4AF37)",
+  "linear-gradient(160deg,#C9A0E8,#A0C9E8)",
+  "linear-gradient(160deg,#1B2A4A,#44506E)",
+  "linear-gradient(160deg,#E8A0A0,#E8C9A0)",
+  "linear-gradient(160deg,#A0C9E8,#C9A0E8)",
+  "linear-gradient(160deg,#D4AF37,#E8C9A0)",
+];
+
 const HOW_IT_WORKS = [
   { icon: "🔍", title: "Escolha o serviço", desc: "Veja preço e duração antes de marcar." },
   { icon: "👤", title: "Escolha o profissional", desc: "Ou deixe qualquer um disponível." },
@@ -180,6 +189,9 @@ export default async function BookingPage({
                 Equipe
               </Box>
             )}
+            <Box component="a" href="#galeria" sx={{ color: "text.secondary", textDecoration: "none" }}>
+              Galeria
+            </Box>
             {publicReviews.total > 0 && (
               <Box component="a" href="#avaliacoes" sx={{ color: "text.secondary", textDecoration: "none" }}>
                 Avaliações
@@ -669,6 +681,48 @@ export default async function BookingPage({
               </Box>
             )}
 
+            {/* Galeria — sem feature de múltiplas fotos ainda (só a capa, F3);
+                mosaico decorativo no lugar das fotos reais, com aviso só pro
+                dono explicando o que falta. */}
+            <Box id="galeria" sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pt: { xs: 7, md: 9 }, pb: { xs: 2, md: 3 } }}>
+              <Box sx={{ textAlign: "center", mb: 4 }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "secondary.dark", letterSpacing: 1.5 }}>
+                  GALERIA
+                </Typography>
+                <Typography
+                  component="h2"
+                  sx={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: { xs: 24, md: 28 }, mt: 1 }}
+                >
+                  Um gostinho do espaço
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gridTemplateRows: "140px 140px",
+                  gap: 2,
+                }}
+              >
+                {GALLERY_GRADIENTS.map((gradient, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      gridRow: i === 0 || i === 2 ? "span 2" : undefined,
+                      borderRadius: 4,
+                      background: gradient,
+                    }}
+                  />
+                ))}
+              </Box>
+              {isOwnerPreview && (
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", textAlign: "center", mt: 2 }}>
+                  Só você (dono) vê este aviso: fotos reais do salão ainda não têm onde ser cadastradas — por
+                  enquanto é um espaço decorativo.
+                </Typography>
+              )}
+            </Box>
+
             {publicReviews.total > 0 && (
               <Box id="avaliacoes" sx={{ maxWidth: 760, mx: "auto", px: 2.5, pt: { xs: 7, md: 9 }, pb: { xs: 7, md: 9 } }}>
                 <Box sx={{ textAlign: "center", mb: 4 }}>
@@ -688,6 +742,71 @@ export default async function BookingPage({
                 <ReviewsCarousel reviews={publicReviews.reviews} />
               </Box>
             )}
+
+            {/* Teaser do app PWA (Fase E) — ainda não existe de verdade, então o
+                botão não promete nada: é só "em breve". */}
+            <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pt: { xs: 2, md: 3 }, pb: { xs: 7, md: 9 } }}>
+              <Box
+                sx={{
+                  position: "relative",
+                  overflow: "hidden",
+                  borderRadius: 7,
+                  bgcolor: "primary.main",
+                  backgroundImage: "linear-gradient(135deg,#1B2A4A,#2E4472)",
+                  p: { xs: 4, md: 6 },
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 4,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    width: 260,
+                    height: 260,
+                    borderRadius: "50%",
+                    bgcolor: "secondary.main",
+                    opacity: 0.2,
+                    filter: "blur(60px)",
+                    top: -80,
+                    right: -60,
+                    pointerEvents: "none",
+                  }}
+                />
+                <Box sx={{ maxWidth: 440, position: "relative" }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: "secondary.main", letterSpacing: 1.5 }}>
+                    EM BREVE
+                  </Typography>
+                  <Typography
+                    component="h2"
+                    sx={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: { xs: 22, md: 26 }, color: "#FAF7F2", mt: 1, mb: 1.5 }}
+                  >
+                    Instale e receba lembretes no celular
+                  </Typography>
+                  <Typography sx={{ fontSize: 13.5, color: "#C3CAE0", lineHeight: 1.6 }}>
+                    Estamos preparando um app instalável pra avisar você sobre confirmação, lembrete de
+                    horário e pedido de presença — sem precisar de WhatsApp.
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    bgcolor: "rgba(255,255,255,.08)",
+                    border: "1px solid rgba(255,255,255,.15)",
+                    borderRadius: 999,
+                    px: 2.5,
+                    py: 1.25,
+                    color: "#C3CAE0",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    position: "relative",
+                  }}
+                >
+                  🔔 Em breve
+                </Box>
+              </Box>
+            </Box>
 
             <Box sx={{ px: 2.5, py: 3, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>
               <Typography variant="caption" color="text.secondary">
