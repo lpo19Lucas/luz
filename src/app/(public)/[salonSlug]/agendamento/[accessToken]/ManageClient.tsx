@@ -166,31 +166,55 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
   const canConfirm = appointment.status === "AWAITING_CONFIRMATION" || appointment.status === "CONFIRMED";
   const canReschedule = appointment.status === "CONFIRMED" || appointment.status === "AWAITING_CONFIRMATION";
 
+  const statusVisual: Record<AppointmentDetails["status"], { icon: string; bg: string; color: string }> = {
+    AWAITING_CONFIRMATION: { icon: "🕓", bg: "#F4EFE3", color: "#9A7B1F" },
+    CONFIRMED: { icon: "✓", bg: "#EAF4EC", color: "#2F7D4F" },
+    COMPLETED: { icon: "✓", bg: "#F4EFE3", color: "#9A7B1F" },
+    CANCELLED: { icon: "✕", bg: "#FBEAEA", color: "#B3453C" },
+    NO_SHOW: { icon: "✕", bg: "#FBEAEA", color: "#B3453C" },
+  };
+  const visual = statusVisual[appointment.status];
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <AppBar position="static" elevation={0}>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{ bgcolor: "primary.main", backgroundImage: "linear-gradient(135deg,#1B2A4A,#2E4472)" }}
+      >
         <Toolbar>
-          <Typography variant="h6">{appointment.salonName}</Typography>
+          <Typography variant="h6" sx={{ color: "#FAF7F2" }}>
+            {appointment.salonName}
+          </Typography>
         </Toolbar>
       </AppBar>
       <Box sx={{ maxWidth: 420, mx: "auto", p: 2.5 }}>
-        <Paper elevation={1} sx={{ p: 2.5, mb: 2 }}>
-          <Chip
-            label={STATUS_LABEL[appointment.status]}
-            color={
-              appointment.status === "CANCELLED"
-                ? "default"
-                : appointment.status === "AWAITING_CONFIRMATION"
-                  ? "warning"
-                  : "success"
-            }
-            size="small"
-            sx={{ mb: 1.5 }}
-          />
-          <Typography variant="body1" sx={{ fontWeight: 500 }}>
+        <Box sx={{ textAlign: "center", mb: 3 }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              bgcolor: visual.bg,
+              color: visual.color,
+              fontSize: 22,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              mx: "auto",
+              mb: 1.5,
+            }}
+          >
+            {visual.icon}
+          </Box>
+          <Typography variant="h6">{STATUS_LABEL[appointment.status]}</Typography>
+        </Box>
+
+        <Paper variant="outlined" sx={{ p: 2.5, mb: 2, borderRadius: 3 }}>
+          <Typography variant="body1" sx={{ fontWeight: 700 }}>
             {appointment.serviceName} com {appointment.professionalName}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
             {new Date(appointment.startAt).toLocaleString("pt-BR", {
               weekday: "long",
               day: "2-digit",
@@ -249,18 +273,26 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
         )}
 
         {!reschedulingOpen && (
-          <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", gap: 1 }}>
+          <Stack spacing={1.25}>
             {canConfirm && (
               <Button
                 variant="contained"
+                fullWidth
                 disabled={actionLoading !== null}
                 onClick={() => handleAction("confirm-presence")}
+                sx={{ bgcolor: "primary.main", color: "secondary.main", py: 1.5, "&:hover": { bgcolor: "primary.dark" } }}
               >
                 {actionLoading === "confirm" ? "Confirmando..." : "Confirmar presença"}
               </Button>
             )}
             {canReschedule && (
-              <Button variant="outlined" disabled={actionLoading !== null} onClick={() => setReschedulingOpen(true)}>
+              <Button
+                variant="outlined"
+                fullWidth
+                disabled={actionLoading !== null}
+                onClick={() => setReschedulingOpen(true)}
+                sx={{ py: 1.5, borderWidth: 1.5 }}
+              >
                 Reagendar
               </Button>
             )}
@@ -268,8 +300,10 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
               <Button
                 variant="outlined"
                 color="error"
+                fullWidth
                 disabled={actionLoading !== null}
                 onClick={() => handleAction("cancel")}
+                sx={{ py: 1.5, borderWidth: 1.5 }}
               >
                 {actionLoading === "cancel" ? "Cancelando..." : "Cancelar"}
               </Button>
