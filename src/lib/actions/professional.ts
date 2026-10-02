@@ -23,6 +23,16 @@ function parseServiceIdsFromForm(formData: FormData) {
   return formData.getAll("serviceIds").map(String).filter(Boolean);
 }
 
+/** % de comissão (0-100) — campo opcional, sem valor padrão de salão
+ * (decisão do Lucas: cada profissional precisa da própria config). */
+function parseCommissionPercent(formData: FormData) {
+  const raw = String(formData.get("commissionPercent") ?? "").trim();
+  if (raw === "") return null;
+  const value = Number(raw);
+  if (Number.isNaN(value) || value < 0 || value > 100) return null;
+  return value;
+}
+
 /**
  * Cria profissional já com disponibilidade semanal e os serviços que ele
  * realiza — sem isso, `getAvailableSlots` (src/lib/slots.ts) nunca encontra
@@ -42,6 +52,7 @@ export async function createProfessionalAction(formData: FormData) {
     data: {
       salonId: salon.id,
       name,
+      commissionPercent: parseCommissionPercent(formData),
       availability: { create: availability },
       services: { create: serviceIds.map((serviceId) => ({ serviceId })) },
     },
@@ -63,7 +74,10 @@ export async function updateProfessionalAction(formData: FormData) {
   const serviceIds = parseServiceIdsFromForm(formData);
 
   await prisma.$transaction([
-    prisma.professional.update({ where: { id }, data: { name, active } }),
+    prisma.professional.update({
+      where: { id },
+      data: { name, active, commissionPercent: parseCommissionPercent(formData) },
+    }),
     // Substitui a disponibilidade e os vínculos de serviço por completo —
     // mais simples do que calcular diff, e o volume por profissional é
     // pequeno (no máximo 7 linhas de disponibilidade).
