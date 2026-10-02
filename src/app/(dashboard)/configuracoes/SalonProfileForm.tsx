@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Box, Paper, Typography, Stack, TextField, Button, Avatar, Alert } from "@mui/material";
-import { updateSalonProfileAction } from "@/lib/actions/salon";
+import { updateSalonProfileAction, generateSalonCopyAction } from "@/lib/actions/salon";
 import { resizeImageToDataURL } from "@/lib/imageResize";
 
 type SalonProfile = {
@@ -26,14 +26,32 @@ type SalonProfile = {
   addressZip: string | null;
   hasCover: boolean;
   coverUrl: string | null;
+  faqJson: Array<{ q: string; a: string }>;
 };
 
-export default function SalonProfileForm({ salon }: { salon: SalonProfile }) {
+export default function SalonProfileForm({
+  salon,
+  aiAvailable,
+}: {
+  salon: SalonProfile;
+  aiAvailable: boolean;
+}) {
   const [coverDataUrl, setCoverDataUrl] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(salon.coverUrl);
   const [removeCover, setRemoveCover] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [description, setDescription] = useState(salon.description ?? "");
+  const [faq, setFaq] = useState(salon.faqJson);
+  const [genState, generateAction, generating] = useActionState(generateSalonCopyAction, undefined);
+
+  useEffect(() => {
+    if (genState && "description" in genState) {
+      setDescription(genState.description);
+      setFaq(genState.faq);
+    }
+  }, [genState]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -125,13 +143,52 @@ export default function SalonProfileForm({ salon }: { salon: SalonProfile }) {
           />
         </Stack>
 
-        <TextField
-          name="description"
-          label="Sobre o salão"
-          multiline
-          minRows={2}
-          defaultValue={salon.description ?? ""}
-        />
+        <input type="hidden" name="faqJson" value={JSON.stringify(faq)} />
+
+        <Box>
+          <TextField
+            name="description"
+            label="Sobre o salão"
+            multiline
+            minRows={2}
+            fullWidth
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+          {aiAvailable && (
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1 }}>
+              <Button
+                type="button"
+                size="small"
+                variant="outlined"
+                disabled={generating}
+                onClick={() => {
+                  const formData = new FormData();
+                  generateAction(formData);
+                }}
+              >
+                {generating ? "Gerando..." : "Gerar descrição com IA"}
+              </Button>
+              {genState?.error && (
+                <Typography variant="caption" color="error">
+                  {genState.error}
+                </Typography>
+              )}
+            </Stack>
+          )}
+          {faq.length > 0 && (
+            <Box sx={{ mt: 1.5, p: 1.5, bgcolor: "grey.50", borderRadius: 1 }}>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+                FAQ (salva junto ao salvar o perfil — some da página pública editando aqui)
+              </Typography>
+              {faq.map((item, i) => (
+                <Typography key={i} variant="caption" display="block" sx={{ mb: 0.5 }}>
+                  <strong>{item.q}</strong> — {item.a}
+                </Typography>
+              ))}
+            </Box>
+          )}
+        </Box>
 
         <Stack direction="row" spacing={2}>
           <TextField

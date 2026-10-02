@@ -5,6 +5,7 @@ import { Box, Typography, Paper, Stack, TextField, Button, Switch, FormControlLa
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { updateSalonSettings, updatePresenceConfirmationConfig } from "@/lib/actions/salon";
+import { isAiDescriptionAvailable } from "@/lib/aiDescription";
 import SalonProfileForm from "./SalonProfileForm";
 
 export default async function ConfiguracoesPage() {
@@ -43,7 +44,9 @@ export default async function ConfiguracoesPage() {
           coverUrl: salon.coverImageData
             ? `/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`
             : null,
+          faqJson: Array.isArray(salon.faqJson) ? (salon.faqJson as Array<{ q: string; a: string }>) : [],
         }}
+        aiAvailable={isAiDescriptionAvailable()}
       />
 
       <Paper elevation={1} sx={{ p: 3, maxWidth: 480, mb: 3 }}>

@@ -1,15 +1,58 @@
 // Página pública de agendamento self-service (spec seção 8.4) + perfil do
 // salão (F3): capa, descrição, endereço, redes sociais e WhatsApp, com o
-// tema aplicando as cores escolhidas pelo dono.
+// tema aplicando as cores escolhidas pelo dono. F15: metadata/Open Graph e
+// JSON-LD HairSalon pra SEO/AEO.
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Box, Typography, Stack, Button, Alert } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { whatsappLink } from "@/lib/phone";
 import { getSession } from "@/lib/auth";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+import { absoluteUrl } from "@/lib/appUrl";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
+
+const WEEKDAY_SCHEMA = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ salonSlug: string }>;
+}): Promise<Metadata> {
+  const { salonSlug } = await params;
+  const salon = await prisma.salon.findUnique({ where: { slug: salonSlug } });
+  if (!salon || !salon.publishedAt) return {};
+
+  const title = salon.name;
+  const description =
+    salon.description ?? `Agende seu horário no ${salon.name} — escolha profissional, serviço e horário.`;
+  const coverUrl = salon.coverImageData
+    ? absoluteUrl(`/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`)
+    : undefined;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/${salon.slug}` },
+    openGraph: {
+      title,
+      description,
+      url: `/${salon.slug}`,
+      type: "website",
+      images: coverUrl ? [{ url: coverUrl }] : undefined,
+    },
+  };
+}
 
 function formatAddress(salon: {
   addressStreet: string | null;
@@ -51,7 +94,17 @@ export default async function BookingPage({
     ? `/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`
     : null;
 
+  const jsonLd = salon.publishedAt ? await buildHairSalonJsonLd(salon) : null;
+
   return (
+    <>
+      {jsonLd && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
     <SalonThemeProvider primaryColor={salon.primaryColor} accentColor={salon.accentColor}>
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
         {coverUrl && (
@@ -153,6 +206,91 @@ export default async function BookingPage({
           <BookingClient salonSlug={salonSlug} />
         )}
       </Box>
-    </SalonThemeProvider>
+      </SalonThemeProvider>
+    </>
   );
+}
+
+type SalonWithExtras = NonNullable<Awaited<ReturnType<typeof prisma.salon.findUnique>>>;
+
+/** JSON-LD HairSalon (F15) — endereço, horários (união das disponibilidades
+ * de todos os profissionais), serviços oferecidos e redes sociais. */
+async function buildHairSalonJsonLd(salon: SalonWithExtras) {
+  const [services, availabilities] = await Promise.all([
+    prisma.service.findMany({ where: { salonId: salon.id } }),
+    prisma.availability.findMany({ where: { professional: { salonId: salon.id, active: true } } }),
+  ]);
+
+  const byWeekday = new Map<number, { start: string; end: string }>();
+  for (const a of availabilities) {
+    const current = byWeekday.get(a.weekday);
+    if (!current || a.startTime < current.start) {
+      byWeekday.set(a.weekday, { start: a.startTime, end: current?.end ?? a.endTime });
+    }
+    const entry = byWeekday.get(a.weekday)!;
+    if (a.endTime > entry.end) entry.end = a.endTime;
+  }
+
+  const openingHoursSpecification = [...byWeekday.entries()].map(([weekday, { start, end }]) => ({
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: WEEKDAY_SCHEMA[weekday],
+    opens: start,
+    closes: end,
+  }));
+
+  const sameAs = [salon.instagramUrl, salon.facebookUrl, salon.tiktokUrl, salon.websiteUrl].filter(
+    (url): url is string => Boolean(url)
+  );
+
+  const faq = Array.isArray(salon.faqJson)
+    ? (salon.faqJson as Array<{ q?: string; a?: string }>).filter((f) => f.q && f.a)
+    : [];
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "HairSalon",
+    name: salon.name,
+    url: absoluteUrl(`/${salon.slug}`),
+    ...(salon.description ? { description: salon.description } : {}),
+    ...(salon.coverImageData
+      ? { image: absoluteUrl(`/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`) }
+      : {}),
+    ...(salon.addressStreet
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: [salon.addressStreet, salon.addressNumber].filter(Boolean).join(", "),
+            addressLocality: salon.addressCity ?? undefined,
+            addressRegion: salon.addressState ?? undefined,
+            postalCode: salon.addressZip ?? undefined,
+            addressCountry: "BR",
+          },
+        }
+      : {}),
+    ...(salon.whatsappPhone ? { telephone: salon.whatsappPhone } : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+    ...(openingHoursSpecification.length > 0 ? { openingHoursSpecification } : {}),
+    ...(services.length > 0
+      ? {
+          makesOffer: services.map((s) => ({
+            "@type": "Offer",
+            itemOffered: { "@type": "Service", name: s.name },
+            price: (s.priceCents / 100).toFixed(2),
+            priceCurrency: "BRL",
+          })),
+        }
+      : {}),
+    ...(faq.length > 0
+      ? {
+          mainEntity: {
+            "@type": "FAQPage",
+            mainEntity: faq.map((f) => ({
+              "@type": "Question",
+              name: f.q,
+              acceptedAnswer: { "@type": "Answer", text: f.a },
+            })),
+          },
+        }
+      : {}),
+  };
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSalon } from "@/lib/currentSalon";
+import { generateSalonCopy, isAiDescriptionAvailable, type GeneratedSalonCopy } from "@/lib/aiDescription";
 
 export async function updateSalonSettings(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -41,11 +42,23 @@ export async function updateSalonProfileAction(formData: FormData) {
 
   const coverImageData = emptyToNull(formData.get("coverImageData"));
   const removeCover = formData.get("removeCover") === "on";
+  const faqJsonRaw = emptyToNull(formData.get("faqJson"));
+  let faqJson: Array<{ q: string; a: string }> | undefined;
+  if (faqJsonRaw) {
+    try {
+      const parsed = JSON.parse(faqJsonRaw);
+      if (Array.isArray(parsed)) faqJson = parsed;
+    } catch {
+      // JSON inválido vindo do form (não deveria acontecer fora de bug no
+      // cliente) — ignora em vez de quebrar o salvamento do resto do perfil.
+    }
+  }
 
   await prisma.salon.update({
     where: { id: salon.id },
     data: {
       description: emptyToNull(formData.get("description")),
+      ...(faqJson ? { faqJson } : {}),
       primaryColor: validColorOrNull(formData.get("primaryColor")),
       accentColor: validColorOrNull(formData.get("accentColor")),
       whatsappPhone: emptyToNull(formData.get("whatsappPhone"))?.replace(/\D/g, "") || null,
@@ -124,4 +137,33 @@ export async function chooseSubscriptionPlan(formData: FormData) {
     data: { plan: plan as "MONTHLY" | "QUARTERLY" | "YEARLY" },
   });
   revalidatePath("/assinatura");
+}
+
+export type GenerateCopyState = (GeneratedSalonCopy & { error?: undefined }) | { error: string } | undefined;
+
+/**
+ * F15 (AEO com IA): gera descrição + FAQ a partir dos dados já cadastrados.
+ * Só gera e devolve — quem persiste é updateSalonProfileAction, depois do
+ * dono revisar/editar o texto no formulário.
+ */
+export async function generateSalonCopyAction(
+  _prev: GenerateCopyState,
+  _formData: FormData
+): Promise<GenerateCopyState> {
+  if (!isAiDescriptionAvailable()) {
+    return { error: "Geração por IA não está configurada nesse ambiente." };
+  }
+
+  const salon = await getCurrentSalon();
+  const services = await prisma.service.findMany({ where: { salonId: salon.id }, select: { name: true } });
+
+  try {
+    return await generateSalonCopy({
+      salonName: salon.name,
+      serviceNames: services.map((s) => s.name),
+      city: salon.addressCity,
+    });
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao gerar descrição" };
+  }
 }
