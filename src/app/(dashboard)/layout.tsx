@@ -2,6 +2,7 @@ import { Typography, Box, Button, Stack, Divider } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { logoutAction } from "@/lib/actions/auth";
+import { whatsappLink } from "@/lib/phone";
 
 const NAV_ITEMS = [
   { href: "/inicio", label: "Início" },
@@ -14,12 +15,14 @@ const NAV_ITEMS = [
   { href: "/metricas", label: "Métricas" },
   { href: "/assinatura", label: "Assinatura" },
   { href: "/configuracoes", label: "Configurações" },
+  { href: "/ajuda", label: "Ajuda" },
 ];
 
 const SIDEBAR_WIDTH = 220;
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const salon = await getCurrentSalon();
+  const supportPhone = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", display: "flex" }}>
@@ -82,6 +85,24 @@ export default async function DashboardLayout({ children }: { children: React.Re
           >
             Ver site público ↗
           </Typography>
+          {supportPhone && (
+            <Typography
+              component="a"
+              href={whatsappLink(supportPhone, "Olá! Preciso de ajuda com a Luz.")}
+              target="_blank"
+              rel="noreferrer"
+              sx={{
+                display: "block",
+                color: "inherit",
+                textDecoration: "none",
+                fontSize: 13,
+                px: 1,
+                py: 1,
+              }}
+            >
+              Falar com o suporte
+            </Typography>
+          )}
           <Box component="form" action={logoutAction}>
             <Button type="submit" size="small" fullWidth sx={{ color: "inherit", justifyContent: "flex-start", px: 1 }}>
               Sair
