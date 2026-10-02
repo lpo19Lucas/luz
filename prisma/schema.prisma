@@ -85,6 +85,9 @@ model Salon {
   products      Product[]
   reservations  ProductReservation[]
   messageTemplates MessageTemplate[]
+  packageDefinitions PackageDefinition[]
+  clientPackages     ClientPackage[]
+  reviews            Review[]
 
   subscription            Subscription?
   presenceConfirmationCfg PresenceConfirmationConfig?
@@ -108,6 +111,11 @@ model Professional {
   category ProfessionalCategory @default(BARBER)
   photoUrl String?
   active   Boolean              @default(true)
+
+  // Comissão (feature "Comissão por profissional"): % individual sobre o
+  // preço do serviço nos atendimentos COMPLETED. Sem valor padrão de salão —
+  // cada profissional precisa da própria config (decisão do Lucas).
+  commissionPercent Float?
 
   services      ServiceProfessional[]
   availability  Availability[]
@@ -190,6 +198,7 @@ model Service {
 
   professionals ServiceProfessional[]
   appointments  Appointment[]
+  packageDefinitions PackageDefinition[]
 
   @@index([salonId])
   @@map("services")
@@ -225,6 +234,8 @@ model Client {
 
   appointments Appointment[]
   reservations ProductReservation[]
+  packages     ClientPackage[]
+  reviews      Review[]
 
   @@unique([salonId, phone]) // mesmo telefone = mesmo cliente dentro do salão
   @@map("clients")
@@ -281,11 +292,18 @@ model Appointment {
   // Quem criou: o cliente pelo link público ou o dono pelo dashboard (B3).
   source AppointmentSource @default(ONLINE)
 
+  // Marca que o serviço foi pago com um pacote do cliente (ver PackageConsumption)
+  // em vez de dinheiro na hora — usado pra não contar a receita duas vezes em
+  // clientStats.ts (o valor já entrou quando o pacote foi vendido).
+  coveredByPackage Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   whatsappJobs WhatsAppMessageJob[]
   events       AppointmentEvent[]
   reservations ProductReservation[]
+  packageConsumption PackageConsumption?
+  review             Review?
 
   @@index([salonId])
   @@index([professionalId, startAt]) // consulta de overlap / agenda do dia
@@ -491,4 +509,100 @@ model ProductReservation {
 
   @@index([salonId, status])
   @@map("product_reservations")
+}
+
+// ------------------------------------------------------------
+// Pacotes/assinaturas de cliente — ticket recorrente, sem gateway de
+// pagamento (mesma filosofia do resto do produto): o dono registra a venda
+// manualmente, ou o cliente reserva pelo link público e o dono confirma o
+// pagamento depois.
+// ------------------------------------------------------------
+
+enum PackageType {
+  SERVICE_CREDITS // N créditos de uso de 1 serviço específico
+  CASH_CREDIT     // saldo em R$ que abate do preço de qualquer serviço
+}
+
+model PackageDefinition {
+  id           String      @id @default(cuid())
+  salonId      String
+  salon        Salon       @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  name         String
+  type         PackageType
+  serviceId    String?     // obrigatório quando type = SERVICE_CREDITS
+  service      Service?    @relation(fields: [serviceId], references: [id])
+  credits      Int?        // obrigatório quando type = SERVICE_CREDITS
+  valueCents   Int?        // obrigatório quando type = CASH_CREDIT
+  priceCents   Int         // preço de venda do pacote
+  validityDays Int         // validade em dias, contada a partir da ativação
+  active       Boolean     @default(true) // dono tira da vitrine/venda sem apagar o histórico
+  createdAt    DateTime    @default(now())
+
+  purchases ClientPackage[]
+
+  @@index([salonId])
+  @@map("package_definitions")
+}
+
+enum ClientPackageStatus {
+  PENDING_PAYMENT // reservado pelo cliente no link público, aguardando o dono confirmar
+  ACTIVE
+  CANCELLED
+}
+
+model ClientPackage {
+  id                  String              @id @default(cuid())
+  salonId             String
+  salon               Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  clientId            String
+  client              Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  packageDefinitionId String
+  packageDefinition   PackageDefinition   @relation(fields: [packageDefinitionId], references: [id])
+  status              ClientPackageStatus @default(PENDING_PAYMENT)
+  remainingCredits    Int?                // snapshot mutável, só pra SERVICE_CREDITS
+  remainingValueCents Int?                // snapshot mutável, só pra CASH_CREDIT
+  activatedAt         DateTime?           // quando virou ACTIVE (venda manual = na hora; reserva pública = na confirmação do dono)
+  expiresAt           DateTime?           // activatedAt + validityDays — "expirado" é derivado (expiresAt < agora), não um status à parte
+  createdAt           DateTime            @default(now())
+
+  consumptions PackageConsumption[]
+
+  @@index([salonId, clientId])
+  @@map("client_packages")
+}
+
+model PackageConsumption {
+  id              String        @id @default(cuid())
+  clientPackageId String
+  clientPackage   ClientPackage @relation(fields: [clientPackageId], references: [id], onDelete: Cascade)
+  appointmentId   String        @unique // um agendamento só pode ser coberto por 1 pacote
+  appointment     Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  creditsUsed     Int?
+  valueUsedCents  Int?
+  createdAt       DateTime      @default(now())
+
+  @@map("package_consumptions")
+}
+
+// ------------------------------------------------------------
+// Avaliação pós-atendimento — nota + comentário, social proof na página
+// pública. O cliente avalia pelo mesmo link de gerenciar agendamento que já
+// recebe (accessToken), sem depender do WhatsApp real (ainda não integrado).
+// ------------------------------------------------------------
+
+model Review {
+  id            String      @id @default(cuid())
+  salonId       String
+  salon         Salon       @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  appointmentId String      @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  rating        Int         // 1 a 5
+  comment       String?
+  hiddenByOwner Boolean     @default(false) // dono oculta da vitrine pública sem apagar
+  createdAt     DateTime    @default(now())
+
+  @@index([salonId, createdAt])
+  @@map("reviews")
 }

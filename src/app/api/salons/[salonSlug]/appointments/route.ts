@@ -18,6 +18,7 @@ interface CreateAppointmentBody {
   clientPhone: string;
   startAt: string; // ISO string
   wantsToPayNow: boolean;
+  usePackageId?: string;
 }
 
 export async function POST(
@@ -38,6 +39,7 @@ export async function POST(
       wantsToPayNow: body.wantsToPayNow,
       source: "ONLINE",
       actor: "CLIENT",
+      usePackageId: body.usePackageId,
     });
 
     return NextResponse.json(

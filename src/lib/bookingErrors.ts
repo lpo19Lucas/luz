@@ -16,6 +16,7 @@ const STATUS_AND_MESSAGE: Record<BookingErrorCode, [number, string]> = {
   PAST_SLOT: [400, "Horário inválido ou no passado"],
   SALON_NOT_PUBLISHED: [409, "Agenda temporariamente indisponível"],
   SALON_BLOCKED: [409, "Agenda temporariamente indisponível"],
+  PACKAGE_NOT_USABLE: [409, "Esse pacote não pode mais ser usado para esse agendamento"],
 };
 
 /** Traduz um erro do fluxo de agendamento pra uma resposta HTTP — usado pelas rotas públicas. */

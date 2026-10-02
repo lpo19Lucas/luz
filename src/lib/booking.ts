@@ -6,6 +6,7 @@ import { salonCalendarDay } from "@/lib/timezone";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { recordAppointmentEvent } from "@/lib/appointmentEvents";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
+import { findUsablePackageForAppointment } from "@/lib/packages";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -25,7 +26,8 @@ export type BookingErrorCode =
   | "CANNOT_RESCHEDULE"
   | "PAST_SLOT"
   | "SALON_NOT_PUBLISHED"
-  | "SALON_BLOCKED";
+  | "SALON_BLOCKED"
+  | "PACKAGE_NOT_USABLE";
 
 /**
  * Erro de negócio do fluxo de agendamento — as rotas e as actions traduzem o
@@ -142,6 +144,7 @@ export async function createAppointment(params: {
   wantsToPayNow: boolean;
   source: AppointmentSource;
   actor: AppointmentEventActor;
+  usePackageId?: string;
 }) {
   const salon = await prisma.salon.findUnique({
     where: { slug: params.salonSlug },
@@ -195,6 +198,32 @@ export async function createAppointment(params: {
             source: params.source,
           },
         });
+
+        if (params.usePackageId) {
+          const usable = await findUsablePackageForAppointment(
+            { salonId: salon.id, clientId: client.id, serviceId: service.id, priceCents: service.priceCents },
+            tx
+          );
+          if (!usable || usable.id !== params.usePackageId) throw new BookingError("PACKAGE_NOT_USABLE");
+
+          const isServiceCredits = usable.packageDefinition.type === "SERVICE_CREDITS";
+          await tx.clientPackage.update({
+            where: { id: usable.id },
+            data: isServiceCredits
+              ? { remainingCredits: { decrement: 1 } }
+              : { remainingValueCents: { decrement: service.priceCents } },
+          });
+          await tx.packageConsumption.create({
+            data: {
+              clientPackageId: usable.id,
+              appointmentId: created.id,
+              creditsUsed: isServiceCredits ? 1 : null,
+              valueUsedCents: isServiceCredits ? null : service.priceCents,
+            },
+          });
+          created.coveredByPackage = true;
+          await tx.appointment.update({ where: { id: created.id }, data: { coveredByPackage: true } });
+        }
 
         await tx.whatsAppMessageJob.create({
           data: { appointmentId: created.id, type: "BOOKING_CONFIRMATION", scheduledFor: new Date() },

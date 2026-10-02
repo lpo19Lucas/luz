@@ -20,7 +20,11 @@ export async function getClientStats(salonId: string, clientId: string): Promise
 
   const completed = appointments.filter((a) => a.status === "COMPLETED");
   const noShowCount = appointments.filter((a) => a.status === "NO_SHOW").length;
-  const totalSpentCents = completed.reduce((sum, a) => sum + a.service.priceCents, 0);
+  // Atendimento coberto por pacote já entrou na receita quando o pacote foi
+  // vendido (ver src/lib/packages.ts) — contar de novo aqui duplicaria.
+  const totalSpentCents = completed
+    .filter((a) => !a.coveredByPackage)
+    .reduce((sum, a) => sum + a.service.priceCents, 0);
 
   return {
     visitCount: completed.length,
@@ -50,7 +54,9 @@ export async function getAllClientStats(salonId: string): Promise<Map<string, Cl
   for (const [clientId, appts] of byClient) {
     const completed = appts.filter((a) => a.status === "COMPLETED");
     const noShowCount = appts.filter((a) => a.status === "NO_SHOW").length;
-    const totalSpentCents = completed.reduce((sum, a) => sum + a.service.priceCents, 0);
+    const totalSpentCents = completed
+      .filter((a) => !a.coveredByPackage)
+      .reduce((sum, a) => sum + a.service.priceCents, 0);
     stats.set(clientId, {
       visitCount: completed.length,
       noShowCount,
