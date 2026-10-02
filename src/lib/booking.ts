@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizePhone } from "@/lib/phone";
 import { getAvailableSlots } from "@/lib/slots";
 import { salonCalendarDay } from "@/lib/timezone";
+import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { recordAppointmentEvent } from "@/lib/appointmentEvents";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 
@@ -23,7 +24,8 @@ export type BookingErrorCode =
   | "CANNOT_CONFIRM"
   | "CANNOT_RESCHEDULE"
   | "PAST_SLOT"
-  | "SALON_NOT_PUBLISHED";
+  | "SALON_NOT_PUBLISHED"
+  | "SALON_BLOCKED";
 
 /**
  * Erro de negócio do fluxo de agendamento — as rotas e as actions traduzem o
@@ -141,12 +143,21 @@ export async function createAppointment(params: {
   source: AppointmentSource;
   actor: AppointmentEventActor;
 }) {
-  const salon = await prisma.salon.findUnique({ where: { slug: params.salonSlug } });
+  const salon = await prisma.salon.findUnique({
+    where: { slug: params.salonSlug },
+    include: { subscription: true },
+  });
   if (!salon) throw new BookingError("SALON_NOT_FOUND");
   // F12: o link público só aceita agendamento depois de publicado. O dono
   // (source OWNER) pode agendar manualmente mesmo antes disso.
   if (params.source === "ONLINE" && !salon.publishedAt) {
     throw new BookingError("SALON_NOT_PUBLISHED");
+  }
+  // F6: salão bloqueado por falta de pagamento (depois da carência) não
+  // aceita agendamento novo pelo link público — os já marcados continuam
+  // válidos. O dono ainda pode agendar manualmente.
+  if (params.source === "ONLINE" && getSubscriptionAccess(salon.subscription) === "BLOCKED") {
+    throw new BookingError("SALON_BLOCKED");
   }
 
   const service = await prisma.service.findFirst({

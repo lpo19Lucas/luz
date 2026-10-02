@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createAdminSession, destroyAdminSession } from "@/lib/auth";
+import { planDurationDays } from "@/lib/plans";
 
 export type FormState = { error: string } | undefined;
 
@@ -40,6 +41,9 @@ export async function setSubscriptionStatusAction(formData: FormData) {
     return;
   }
 
+  const subscription = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!subscription) return;
+
   await prisma.subscription.update({
     where: { id: subscriptionId },
     data: {
@@ -48,7 +52,7 @@ export async function setSubscriptionStatusAction(formData: FormData) {
         ? {
             activatedAt: new Date(),
             activatedManuallyByEmail: "admin (painel /admin)",
-            currentPeriodEnd: nextPeriodEnd(),
+            currentPeriodEnd: nextPeriodEnd(subscription),
           }
         : {}),
     },
@@ -56,9 +60,16 @@ export async function setSubscriptionStatusAction(formData: FormData) {
   revalidatePath("/admin");
 }
 
-function nextPeriodEnd() {
-  // Aproximação simples pro MVP: 30 dias a partir de agora, independente do
-  // plano escolhido (mensal/trimestral/anual) — ajustar quando a conciliação
-  // precisar diferenciar por plano de verdade.
-  return new Date(Date.now() + 30 * 24 * 60 * 60_000);
+/**
+ * F6: soma a duração do plano (30/90/365 dias) a partir de
+ * max(agora, currentPeriodEnd) — assim renovar antes do vencimento empilha
+ * o período em vez de perder os dias restantes, e renovar depois de vencido
+ * conta a partir de hoje (não do passado).
+ */
+function nextPeriodEnd(subscription: { plan: string; currentPeriodEnd: Date | null }) {
+  const base = subscription.currentPeriodEnd && subscription.currentPeriodEnd > new Date()
+    ? subscription.currentPeriodEnd
+    : new Date();
+  const days = planDurationDays(subscription.plan);
+  return new Date(base.getTime() + days * 24 * 60 * 60_000);
 }

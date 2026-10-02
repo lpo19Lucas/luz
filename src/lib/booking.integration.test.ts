@@ -168,6 +168,42 @@ describe("createAppointment", () => {
     expect(appointment.id).toBeTruthy();
   });
 
+  it("recusa agendamento ONLINE num salão bloqueado por falta de pagamento (F6)", async () => {
+    const { salon, professional, service } = await createTestSalon({ subscriptionAccess: "BLOCKED" });
+
+    await expect(
+      createAppointment({
+        salonSlug: salon.slug,
+        professionalId: professional.id,
+        serviceId: service.id,
+        clientName: "Cliente",
+        clientPhone: "11999990000",
+        startAt: futureSlotTime(24),
+        wantsToPayNow: false,
+        source: "ONLINE",
+        actor: "CLIENT",
+      })
+    ).rejects.toThrow(new BookingError("SALON_BLOCKED"));
+  });
+
+  it("permite agendamento ONLINE num salão em carência (GRACE), só bloqueia depois dela", async () => {
+    const { salon, professional, service } = await createTestSalon({ subscriptionAccess: "GRACE" });
+
+    const { appointment } = await createAppointment({
+      salonSlug: salon.slug,
+      professionalId: professional.id,
+      serviceId: service.id,
+      clientName: "Cliente",
+      clientPhone: "11999990000",
+      startAt: futureSlotTime(24),
+      wantsToPayNow: false,
+      source: "ONLINE",
+      actor: "CLIENT",
+    });
+
+    expect(appointment.id).toBeTruthy();
+  });
+
   it("recusa cliente banido com mensagem neutra", async () => {
     const { salon, professional, service } = await createTestSalon();
     await prisma.client.create({

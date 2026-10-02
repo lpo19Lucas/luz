@@ -34,7 +34,11 @@ export async function resetDb() {
  * rota de agendamento precisa pra funcionar, pra não repetir isso em cada teste.
  */
 export async function createTestSalon(
-  overrides: { presenceConfirmationEnabled?: boolean; published?: boolean } = {}
+  overrides: {
+    presenceConfirmationEnabled?: boolean;
+    published?: boolean;
+    subscriptionAccess?: "OK" | "GRACE" | "BLOCKED";
+  } = {}
 ) {
   const owner = await prisma.user.create({
     data: {
@@ -85,6 +89,21 @@ export async function createTestSalon(
       enabled: overrides.presenceConfirmationEnabled ?? true,
       hoursBefore: 24,
     },
+  });
+
+  // Assinatura em dia por padrão (TRIAL dentro do prazo) — booking.ts passou
+  // a checar getSubscriptionAccess (F6), então sem isso todo teste de
+  // agendamento online quebraria. `subscriptionAccess` simula GRACE/BLOCKED
+  // movendo trialEndsAt pro passado.
+  const subscriptionAccess = overrides.subscriptionAccess ?? "OK";
+  const trialEndsAt =
+    subscriptionAccess === "OK"
+      ? new Date(Date.now() + 30 * 24 * 60 * 60_000)
+      : subscriptionAccess === "GRACE"
+        ? new Date(Date.now() - 1 * 24 * 60 * 60_000) // venceu há 1 dia — dentro dos 5 de carência
+        : new Date(Date.now() - 10 * 24 * 60 * 60_000); // venceu há 10 dias — carência estourada
+  await prisma.subscription.create({
+    data: { salonId: salon.id, plan: "TRIAL", status: "TRIAL", trialEndsAt },
   });
 
   return { owner, salon, professional, service };

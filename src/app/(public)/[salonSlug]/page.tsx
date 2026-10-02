@@ -7,6 +7,7 @@ import { Box, Typography, Stack, Button, Alert } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { whatsappLink } from "@/lib/phone";
 import { getSession } from "@/lib/auth";
+import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 
@@ -30,14 +31,19 @@ export default async function BookingPage({
   params: Promise<{ salonSlug: string }>;
 }) {
   const { salonSlug } = await params;
-  const salon = await prisma.salon.findUnique({ where: { slug: salonSlug } });
+  const salon = await prisma.salon.findUnique({
+    where: { slug: salonSlug },
+    include: { subscription: true },
+  });
   if (!salon) notFound();
 
-  // F12: link público só abre pra clientes depois de publicado. O dono
-  // logado continua vendo uma prévia (com aviso) mesmo antes disso.
+  // F12: link público só abre pra clientes depois de publicado. F6: some
+  // depois da carência por falta de pagamento. O dono logado continua vendo
+  // uma prévia (com aviso) mesmo bloqueado por qualquer um dos dois.
   const session = await getSession();
   const isOwnerPreview = session?.userId === salon.ownerId;
-  const isBlocked = !salon.publishedAt && !isOwnerPreview;
+  const subscriptionBlocked = getSubscriptionAccess(salon.subscription) === "BLOCKED";
+  const isBlocked = (!salon.publishedAt || subscriptionBlocked) && !isOwnerPreview;
 
   const address = formatAddress(salon);
   const hasSocial = salon.instagramUrl || salon.facebookUrl || salon.tiktokUrl || salon.websiteUrl;
@@ -108,15 +114,28 @@ export default async function BookingPage({
           </Box>
         )}
 
-        {!salon.publishedAt && isOwnerPreview && (
+        {(!salon.publishedAt || subscriptionBlocked) && isOwnerPreview && (
           <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 2 }}>
             <Alert severity="warning">
-              Prévia: esse link ainda não foi publicado. Só você (logado) está vendo essa página —
-              clientes veem &ldquo;agenda indisponível&rdquo;. Publique em{" "}
-              <Link href="/inicio" style={{ color: "inherit" }}>
-                Primeiros passos
-              </Link>
-              .
+              Prévia: só você (logado) está vendo essa página — clientes veem &ldquo;agenda
+              indisponível&rdquo;.{" "}
+              {!salon.publishedAt ? (
+                <>
+                  Publique em{" "}
+                  <Link href="/inicio" style={{ color: "inherit" }}>
+                    Primeiros passos
+                  </Link>
+                  .
+                </>
+              ) : (
+                <>
+                  Resolva o pagamento em{" "}
+                  <Link href="/assinatura" style={{ color: "inherit" }}>
+                    Assinatura
+                  </Link>
+                  .
+                </>
+              )}
             </Alert>
           </Box>
         )}

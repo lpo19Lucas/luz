@@ -1,24 +1,13 @@
 // Tela de assinatura — mostra a chave/QR PIX da plataforma, plano atual,
 // status (TRIAL/ACTIVE/PAST_DUE). Sem gateway: liberação é manual (spec
 // seção 9/10). Referência visual: mui-exemplos.html (Exemplo 5).
-import { Box, Typography, Paper, Chip, Stack, Button } from "@mui/material";
+import { Box, Typography, Paper, Chip, Stack, Button, Alert } from "@mui/material";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { chooseSubscriptionPlan } from "@/lib/actions/salon";
 import { formatSalonDate } from "@/lib/timezone";
-
-const PLANS = [
-  { value: "MONTHLY", label: "Mensal", pricePerMonth: 79, sub: "cobrado todo mês" },
-  { value: "QUARTERLY", label: "Trimestral", pricePerMonth: 69, sub: "R$ 207 a cada 3 meses" },
-  { value: "YEARLY", label: "Anual", pricePerMonth: 59, sub: "R$ 708 uma vez ao ano" },
-] as const;
-
-const PLAN_LABEL: Record<string, string> = {
-  TRIAL: "Trial",
-  MONTHLY: "Mensal",
-  QUARTERLY: "Trimestral",
-  YEARLY: "Anual",
-};
+import { PLANS, PLAN_LABEL, getPlatformPixKey } from "@/lib/plans";
+import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 
 const STATUS_LABEL: Record<string, string> = {
   TRIAL: "Período de teste",
@@ -34,10 +23,6 @@ const STATUS_COLOR: Record<string, "info" | "success" | "warning" | "default"> =
   CANCELLED: "default",
 };
 
-// PIX estático da plataforma (spec 8.8/9): não é por salão, é fixo — a
-// conciliação de quem pagou é manual, feita por quem administra a plataforma.
-const PLATFORM_PIX_KEY = "financeiro@plataforma-agendamento.com";
-
 export default async function AssinaturaPage() {
   const salon = await getCurrentSalon();
   const subscription = await prisma.subscription.findUnique({ where: { salonId: salon.id } });
@@ -51,11 +36,27 @@ export default async function AssinaturaPage() {
     Math.ceil((subscription.trialEndsAt.getTime() - Date.now()) / (24 * 60 * 60_000))
   );
 
+  const access = getSubscriptionAccess(subscription);
+  const platformPixKey = getPlatformPixKey();
+
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
         Assinatura
       </Typography>
+
+      {access === "GRACE" && (
+        <Alert severity="warning" sx={{ mb: 2, maxWidth: 480 }}>
+          Pagamento pendente. Você ainda está no período de carência — faça o PIX abaixo pra
+          não perder o acesso ao link público.
+        </Alert>
+      )}
+      {access === "BLOCKED" && (
+        <Alert severity="error" sx={{ mb: 2, maxWidth: 480 }}>
+          Seu link público está indisponível por falta de pagamento. Os agendamentos já marcados
+          continuam válidos, mas clientes não conseguem marcar novos até você pagar.
+        </Alert>
+      )}
 
       <Paper elevation={1} sx={{ p: 3, maxWidth: 480, mb: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -132,9 +133,15 @@ export default async function AssinaturaPage() {
           manual — o status muda para &ldquo;Ativa&rdquo; depois que a equipe da plataforma conferir o
           pagamento.
         </Typography>
-        <Paper variant="outlined" sx={{ p: 1.5, fontFamily: "monospace", fontSize: 14, bgcolor: "grey.50" }}>
-          {PLATFORM_PIX_KEY}
-        </Paper>
+        {platformPixKey ? (
+          <Paper variant="outlined" sx={{ p: 1.5, fontFamily: "monospace", fontSize: 14, bgcolor: "grey.50" }}>
+            {platformPixKey}
+          </Paper>
+        ) : (
+          <Alert severity="info">
+            Chave PIX da plataforma ainda não configurada. Fale com o suporte pra saber como pagar.
+          </Alert>
+        )}
         {subscription.activatedAt && (
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
             Última ativação confirmada em {formatSalonDate(subscription.activatedAt)}
