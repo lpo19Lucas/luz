@@ -5,7 +5,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Box, Typography, Stack, Button, Alert, Paper, Rating, TextField } from "@mui/material";
+import { Box, Typography, Stack, Button, Alert, Paper, TextField } from "@mui/material";
 import { prisma } from "@/lib/prisma";
 import { whatsappLink } from "@/lib/phone";
 import { getSession } from "@/lib/auth";
@@ -15,6 +15,14 @@ import { getPublicReviews } from "@/lib/reviews";
 import { reservePackagePublicAction } from "@/lib/actions/package";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
+import ReviewsCarousel from "./ReviewsCarousel";
+
+const HOW_IT_WORKS = [
+  { icon: "🔍", title: "Escolha o serviço", desc: "Veja preço e duração antes de marcar." },
+  { icon: "👤", title: "Escolha o profissional", desc: "Ou deixe qualquer um disponível." },
+  { icon: "🗓️", title: "Escolha o horário", desc: "Vagas reais, atualizadas na hora." },
+  { icon: "✅", title: "Pronto!", desc: "Confirmação na hora, sem precisar ligar." },
+];
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -82,7 +90,11 @@ export default async function BookingPage({
   const { salonSlug } = await params;
   const salon = await prisma.salon.findUnique({
     where: { slug: salonSlug },
-    include: { subscription: true },
+    include: {
+      subscription: true,
+      professionals: { where: { active: true }, orderBy: { name: "asc" } },
+      services: { orderBy: { name: "asc" } },
+    },
   });
   if (!salon) notFound();
 
@@ -119,30 +131,257 @@ export default async function BookingPage({
         />
       )}
     <SalonThemeProvider primaryColor={salon.primaryColor} accentColor={salon.accentColor}>
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-        {coverUrl && (
+      <Box sx={{ bgcolor: "background.default", overflowX: "hidden" }}>
+        {/* Nav */}
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: { xs: 2.5, md: 6 },
+            py: 2,
+            backdropFilter: "blur(10px)",
+            bgcolor: "rgba(250,247,242,.85)",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "10px",
+                bgcolor: "primary.main",
+                color: "secondary.main",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-display)",
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {salon.name.charAt(0).toUpperCase()}
+            </Box>
+            <Typography sx={{ fontWeight: 700, fontSize: 17 }}>{salon.name}</Typography>
+          </Box>
+          <Stack direction="row" spacing={3.5} sx={{ display: { xs: "none", sm: "flex" }, fontSize: 14 }}>
+            {salon.services.length > 0 && (
+              <Box component="a" href="#servicos" sx={{ color: "text.secondary", textDecoration: "none" }}>
+                Serviços
+              </Box>
+            )}
+            {salon.professionals.length > 0 && (
+              <Box component="a" href="#equipe" sx={{ color: "text.secondary", textDecoration: "none" }}>
+                Equipe
+              </Box>
+            )}
+            {publicReviews.total > 0 && (
+              <Box component="a" href="#avaliacoes" sx={{ color: "text.secondary", textDecoration: "none" }}>
+                Avaliações
+              </Box>
+            )}
+          </Stack>
+          {!isBlocked && (
+            <Button
+              component="a"
+              href="#agendar"
+              variant="contained"
+              size="small"
+              sx={{ bgcolor: "primary.main", color: "secondary.main", "&:hover": { bgcolor: "primary.dark" } }}
+            >
+              Agendar agora
+            </Button>
+          )}
+        </Box>
+
+        {/* Hero */}
+        <Box sx={{ position: "relative", overflow: "hidden", px: { xs: 2.5, md: 6 }, py: { xs: 6, md: 9 } }}>
           <Box
             sx={{
-              height: { xs: 140, sm: 200 },
-              backgroundImage: `url(${coverUrl})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
+              position: "absolute",
+              width: 340,
+              height: 340,
+              borderRadius: "50%",
+              bgcolor: "secondary.main",
+              opacity: 0.18,
+              filter: "blur(60px)",
+              top: -120,
+              right: -80,
+              pointerEvents: "none",
             }}
           />
-        )}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1.1fr 1fr" },
+              gap: { xs: 5, md: 7 },
+              alignItems: "center",
+              maxWidth: 1180,
+              mx: "auto",
+              position: "relative",
+            }}
+          >
+            <Box>
+              {address && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "inline-block",
+                    bgcolor: "primary.main",
+                    color: "secondary.main",
+                    fontWeight: 700,
+                    px: 1.75,
+                    py: 0.75,
+                    borderRadius: 999,
+                    mb: 2.5,
+                  }}
+                >
+                  📍 {address}
+                </Typography>
+              )}
+              <Typography
+                component="h1"
+                sx={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 600,
+                  fontSize: { xs: 36, sm: 44, md: 52 },
+                  lineHeight: 1.08,
+                  letterSpacing: "-0.5px",
+                  mb: 2.5,
+                }}
+              >
+                {salon.name}
+              </Typography>
+              {salon.description && (
+                <Typography color="text.secondary" sx={{ fontSize: 17, lineHeight: 1.6, maxWidth: 460, mb: 4 }}>
+                  {salon.description}
+                </Typography>
+              )}
+              {!isBlocked && (
+                <Stack direction="row" spacing={1.75} sx={{ flexWrap: "wrap", gap: 1.75, mb: 5 }}>
+                  <Button
+                    component="a"
+                    href="#agendar"
+                    variant="contained"
+                    size="large"
+                    sx={{ bgcolor: "secondary.main", color: "primary.main", py: 1.75, px: 3.5, fontSize: 15 }}
+                  >
+                    Ver horários disponíveis
+                  </Button>
+                  {salon.professionals.length > 0 && (
+                    <Button
+                      component="a"
+                      href="#equipe"
+                      variant="outlined"
+                      size="large"
+                      sx={{ borderWidth: 1.5, py: 1.75, px: 3.5, fontSize: 15, borderColor: "primary.main" }}
+                    >
+                      Conhecer a equipe
+                    </Button>
+                  )}
+                </Stack>
+              )}
+              <Stack direction="row" spacing={4.5} sx={{ flexWrap: "wrap", rowGap: 2 }}>
+                {publicReviews.total > 0 && publicReviews.averageRating && (
+                  <Box>
+                    <Typography sx={{ fontSize: 24, fontWeight: 700 }}>
+                      {publicReviews.averageRating.toFixed(1)} ★
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {publicReviews.total} avaliaç{publicReviews.total === 1 ? "ão" : "ões"}
+                    </Typography>
+                  </Box>
+                )}
+                {salon.professionals.length > 0 && (
+                  <Box>
+                    <Typography sx={{ fontSize: 24, fontWeight: 700 }}>{salon.professionals.length}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      profission{salon.professionals.length === 1 ? "al" : "ais"}
+                    </Typography>
+                  </Box>
+                )}
+                {salon.services.length > 0 && (
+                  <Box>
+                    <Typography sx={{ fontSize: 24, fontWeight: 700 }}>{salon.services.length}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      serviç{salon.services.length === 1 ? "o" : "os"}
+                    </Typography>
+                  </Box>
+                )}
+              </Stack>
+            </Box>
 
-        {(salon.description || address || salon.whatsappPhone || hasSocial) && (
-          <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 2 }}>
-            {salon.description && (
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {salon.description}
-              </Typography>
-            )}
-            {address && (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                {address}
-              </Typography>
-            )}
+            <Box sx={{ position: "relative" }}>
+              <Box
+                sx={{
+                  width: "100%",
+                  height: { xs: 260, md: 420 },
+                  borderRadius: 7,
+                  boxShadow: "0 30px 60px rgba(27,42,74,.18)",
+                  ...(coverUrl
+                    ? { backgroundImage: `url(${coverUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                    : {
+                        background: "linear-gradient(135deg,#C9A0E8 0%,#E8C9A0 55%,#D4AF37 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: "var(--font-display)",
+                        fontSize: 64,
+                        fontWeight: 700,
+                        color: "rgba(27,42,74,.35)",
+                      }),
+                }}
+              >
+                {!coverUrl && salon.name.charAt(0).toUpperCase()}
+              </Box>
+              {!isBlocked && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    bottom: -20,
+                    left: -16,
+                    bgcolor: "#fff",
+                    borderRadius: 4,
+                    px: 2.25,
+                    py: 1.75,
+                    boxShadow: "0 18px 36px rgba(27,42,74,.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.25,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      bgcolor: "primary.main",
+                      color: "secondary.main",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 700,
+                    }}
+                  >
+                    📅
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700 }}>Agenda em tempo real</Typography>
+                    <Typography sx={{ fontSize: 11, color: "text.secondary" }}>Marque sem precisar ligar</Typography>
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Box>
+
+        {hasSocial && (
+          <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pb: 2 }}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
               {salon.whatsappPhone && (
                 <Button
@@ -181,8 +420,8 @@ export default async function BookingPage({
         )}
 
         {(!salon.publishedAt || subscriptionBlocked) && isOwnerPreview && (
-          <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 2 }}>
-            <Alert severity="warning">
+          <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pb: 2 }}>
+            <Alert severity="warning" sx={{ borderRadius: 2 }}>
               Prévia: só você (logado) está vendo essa página — clientes veem &ldquo;agenda
               indisponível&rdquo;.{" "}
               {!salon.publishedAt ? (
@@ -207,7 +446,7 @@ export default async function BookingPage({
         )}
 
         {isBlocked ? (
-          <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 4, textAlign: "center" }}>
+          <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pt: 2, pb: 8, textAlign: "center" }}>
             <Typography variant="h6" sx={{ mb: 1 }}>
               Agenda temporariamente indisponível
             </Typography>
@@ -217,7 +456,176 @@ export default async function BookingPage({
           </Box>
         ) : (
           <>
-            <BookingClient salonSlug={salonSlug} />
+            {/* Como funciona */}
+            <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pb: { xs: 6, md: 8 } }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
+                  gap: 2,
+                }}
+              >
+                {HOW_IT_WORKS.map((step) => (
+                  <Box
+                    key={step.title}
+                    sx={{ bgcolor: "#fff", border: "1px solid", borderColor: "divider", borderRadius: 4, p: 2.75 }}
+                  >
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 2.5,
+                        bgcolor: "#FAF1D8",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 19,
+                        mb: 1.5,
+                      }}
+                    >
+                      {step.icon}
+                    </Box>
+                    <Typography sx={{ fontSize: 14.5, fontWeight: 700, mb: 0.5 }}>{step.title}</Typography>
+                    <Typography sx={{ fontSize: 13, color: "text.secondary", lineHeight: 1.5 }}>
+                      {step.desc}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
+            {/* Serviços */}
+            {salon.services.length > 0 && (
+              <Box id="servicos" sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pb: { xs: 6, md: 9 } }}>
+                <Box sx={{ textAlign: "center", maxWidth: 520, mx: "auto", mb: 4.5 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: "secondary.dark", letterSpacing: 1.5 }}
+                  >
+                    NOSSOS SERVIÇOS
+                  </Typography>
+                  <Typography
+                    component="h2"
+                    sx={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: { xs: 26, md: 32 }, mt: 1 }}
+                  >
+                    O que fazemos por aqui
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4, 1fr)" },
+                    gap: 2.5,
+                  }}
+                >
+                  {salon.services.map((s) => (
+                    <Box
+                      component="a"
+                      href="#agendar"
+                      key={s.id}
+                      sx={{
+                        display: "block",
+                        bgcolor: "#fff",
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 4,
+                        p: 3,
+                        textDecoration: "none",
+                        color: "inherit",
+                        transition: "transform .15s ease, box-shadow .15s ease",
+                        "&:hover": { transform: "translateY(-4px)", boxShadow: "0 16px 32px rgba(27,42,74,.1)" },
+                      }}
+                    >
+                      <Typography sx={{ fontSize: 16, fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
+                      <Typography sx={{ fontSize: 13, color: "text.secondary", mb: 2 }}>
+                        {s.durationMinutes} min
+                      </Typography>
+                      <Typography sx={{ fontSize: 18, fontWeight: 700, color: "primary.main" }}>
+                        {formatPrice(s.priceCents)}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Equipe */}
+            {salon.professionals.length > 0 && (
+              <Box id="equipe" sx={{ bgcolor: "primary.main", py: { xs: 6, md: 8 } }}>
+                <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 } }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: "secondary.main", letterSpacing: 1.5 }}
+                  >
+                    NOSSA EQUIPE
+                  </Typography>
+                  <Typography
+                    component="h2"
+                    sx={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 600,
+                      fontSize: { xs: 24, md: 28 },
+                      color: "#FAF7F2",
+                      mt: 1,
+                      mb: 3.5,
+                    }}
+                  >
+                    Profissionais que você escolhe
+                  </Typography>
+                  <Stack direction="row" spacing={2.5} sx={{ overflowX: "auto", pb: 1 }}>
+                    {salon.professionals.map((p) => (
+                      <Box
+                        key={p.id}
+                        sx={{
+                          flex: "0 0 180px",
+                          bgcolor: "rgba(255,255,255,.06)",
+                          border: "1px solid rgba(255,255,255,.1)",
+                          borderRadius: 4,
+                          p: 2.5,
+                          textAlign: "center",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: "50%",
+                            bgcolor: "secondary.main",
+                            color: "primary.main",
+                            mx: "auto",
+                            mb: 1.5,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontFamily: "var(--font-display)",
+                            fontWeight: 700,
+                            fontSize: 20,
+                            ...(p.photoUrl
+                              ? { backgroundImage: `url(${p.photoUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                              : {}),
+                          }}
+                        >
+                          {!p.photoUrl && p.name.charAt(0).toUpperCase()}
+                        </Box>
+                        <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#FAF7F2" }}>{p.name}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+              </Box>
+            )}
+
+            <Box id="agendar" sx={{ pt: { xs: 6, md: 8 } }}>
+              <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, textAlign: "center", mb: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 700, color: "secondary.dark", letterSpacing: 1.5 }}
+                >
+                  AGENDE SEU HORÁRIO
+                </Typography>
+              </Box>
+              <BookingClient salonSlug={salonSlug} />
+            </Box>
 
             {packageDefinitions.length > 0 && (
               <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pb: 3 }}>
@@ -262,35 +670,30 @@ export default async function BookingPage({
             )}
 
             {publicReviews.total > 0 && (
-              <Box sx={{ maxWidth: 480, mx: "auto", px: 2.5, pb: 4 }}>
-                <Typography variant="overline" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-                  Avaliações
-                </Typography>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                  <Rating value={publicReviews.averageRating} precision={0.1} readOnly size="small" />
-                  <Typography variant="body2" color="text.secondary">
-                    {publicReviews.averageRating?.toFixed(1)} ({publicReviews.total})
+              <Box id="avaliacoes" sx={{ maxWidth: 760, mx: "auto", px: 2.5, pt: { xs: 7, md: 9 }, pb: { xs: 7, md: 9 } }}>
+                <Box sx={{ textAlign: "center", mb: 4 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ fontWeight: 700, color: "secondary.dark", letterSpacing: 1.5 }}
+                  >
+                    DEPOIMENTOS
                   </Typography>
-                </Stack>
-                <Stack spacing={1}>
-                  {publicReviews.reviews.map((r) => (
-                    <Paper key={r.id} variant="outlined" sx={{ p: 1.5 }}>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Rating value={r.rating} readOnly size="small" />
-                        <Typography variant="caption" sx={{ fontWeight: 500 }}>
-                          {r.clientName}
-                        </Typography>
-                      </Stack>
-                      {r.comment && (
-                        <Typography variant="body2" sx={{ mt: 0.5 }}>
-                          {r.comment}
-                        </Typography>
-                      )}
-                    </Paper>
-                  ))}
-                </Stack>
+                  <Typography
+                    component="h2"
+                    sx={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: { xs: 24, md: 28 }, mt: 1 }}
+                  >
+                    Quem já marcou, recomenda
+                  </Typography>
+                </Box>
+                <ReviewsCarousel reviews={publicReviews.reviews} />
               </Box>
             )}
+
+            <Box sx={{ px: 2.5, py: 3, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>
+              <Typography variant="caption" color="text.secondary">
+                {salon.name} · agendamento online pela Luz
+              </Typography>
+            </Box>
           </>
         )}
       </Box>

@@ -241,8 +241,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-      <Header salonName={salon.name} />
+    <Box sx={{ bgcolor: "background.default" }}>
       <Box sx={{ maxWidth: 480, mx: "auto", p: 2.5 }}>
         {myAppointments.length > 0 && (
           <Section title="Seus agendamentos neste salão">
