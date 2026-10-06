@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import AddToCalendarButtons, { type CalendarLinks } from "../../AddToCalendarButtons";
 import InstallAppPrompt from "../../../../InstallAppPrompt";
+import EnableNotifications from "../../../../EnableNotifications";
 
 type AppointmentDetails = {
   status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
@@ -243,6 +244,16 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
               }
             />
           </Paper>
+        )}
+
+        {appointment.calendar && (
+          <Box sx={{ mb: 2 }}>
+            <EnableNotifications
+              accessToken={accessToken}
+              title="Receber lembrete do seu horário"
+              description="Avisamos no dia do atendimento e pedimos a confirmação de presença na véspera."
+            />
+          </Box>
         )}
 
         <Box sx={{ mb: 2 }}>

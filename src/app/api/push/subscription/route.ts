@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { resolveMember } from "@/lib/members";
+import { dispatchInBackground } from "@/lib/staffNotifications";
+import { sendBookingConfirmedToClient } from "@/lib/clientNotifications";
 import { getVapidPublicKey, isPushConfigured, isValidSubscription, removeSubscription, saveSubscription } from "@/lib/push";
 
 /**
@@ -35,6 +37,9 @@ export async function POST(req: NextRequest) {
     });
     if (!appointment) return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
     await saveSubscription(body.subscription, { salonId: appointment.salonId, clientId: appointment.clientId }, userAgent);
+    // Resposta imediata de que deu certo ("você vai receber o lembrete...").
+    const token = body.accessToken;
+    dispatchInBackground(() => sendBookingConfirmedToClient(token));
     return NextResponse.json({ ok: true, audience: "client" });
   }
 

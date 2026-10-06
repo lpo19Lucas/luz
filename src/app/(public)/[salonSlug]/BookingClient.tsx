@@ -26,6 +26,7 @@ import {
 } from "@/lib/clientStorage";
 import AddToCalendarButtons, { type CalendarLinks } from "./AddToCalendarButtons";
 import InstallAppPrompt from "../../InstallAppPrompt";
+import EnableNotifications from "../../EnableNotifications";
 
 type Professional = { id: string; name: string; photoUrl: string | null; serviceIds: string[] };
 type Service = { id: string; name: string; durationMinutes: number; priceCents: number; imageUrl: string | null };
@@ -72,6 +73,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [manageUrl, setManageUrl] = useState<string | null>(null);
   const [calendarLinks, setCalendarLinks] = useState<CalendarLinks | null>(null);
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
 
   const [myAppointments, setMyAppointments] = useState<MyAppointment[]>([]);
 
@@ -178,6 +180,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
       }
       setManageUrl(data.manageUrl);
       setCalendarLinks(data.calendar ?? null);
+      setCreatedToken(data.accessToken);
       saveClientInfo(salonSlug, { name: clientName, phone: clientPhone });
       addSavedAppointmentToken(salonSlug, data.accessToken);
     } finally {
@@ -242,6 +245,15 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
           {calendarLinks && (
             <Box sx={{ mt: 3, textAlign: "left" }}>
               <AddToCalendarButtons links={calendarLinks} note="O evento já vem com lembrete 2 horas antes." />
+            </Box>
+          )}
+          {createdToken && (
+            <Box sx={{ mt: 2, textAlign: "left" }}>
+              <EnableNotifications
+                accessToken={createdToken}
+                title="Receber lembrete do seu horário"
+                description="Avisamos no dia do atendimento e pedimos a confirmação de presença na véspera, direto no seu celular."
+              />
             </Box>
           )}
           <Box sx={{ mt: 2, textAlign: "left" }}>

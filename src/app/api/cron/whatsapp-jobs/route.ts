@@ -4,6 +4,7 @@ import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 import { recordAppointmentEvent } from "@/lib/appointmentEvents";
 import { absoluteUrl } from "@/lib/appUrl";
 import { notifyStaffAboutAppointment, sendDailyAgendaDigests } from "@/lib/staffNotifications";
+import { sendClientDailyNotifications } from "@/lib/clientNotifications";
 
 /**
  * GET /api/cron/whatsapp-jobs
@@ -30,8 +31,9 @@ export async function GET(req: NextRequest) {
   const noShowResult = await handleNoShows();
   // Depois do no-show: horário liberado já não entra no resumo do dia.
   const digestResult = await sendDailyAgendaDigests();
+  const clientResult = await sendClientDailyNotifications();
 
-  return NextResponse.json({ ...messageResult, ...noShowResult, ...digestResult });
+  return NextResponse.json({ ...messageResult, ...noShowResult, ...digestResult, ...clientResult });
 }
 
 async function processWhatsAppJobs() {
