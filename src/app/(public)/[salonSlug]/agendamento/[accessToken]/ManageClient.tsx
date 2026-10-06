@@ -15,6 +15,7 @@ import {
   TextField,
   Rating,
 } from "@mui/material";
+import AddToCalendarButtons, { type CalendarLinks } from "../../AddToCalendarButtons";
 
 type AppointmentDetails = {
   status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
@@ -28,6 +29,8 @@ type AppointmentDetails = {
   clientName: string;
   hasReview: boolean;
   canReview: boolean;
+  rescheduledCount: number;
+  calendar: CalendarLinks | null;
 };
 
 const STATUS_LABEL: Record<AppointmentDetails["status"], string> = {
@@ -227,6 +230,19 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
             Cliente: {appointment.clientName}
           </Typography>
         </Paper>
+
+        {appointment.calendar && (
+          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+            <AddToCalendarButtons
+              links={appointment.calendar}
+              note={
+                appointment.rescheduledCount > 0
+                  ? "Remarcou? Adicione de novo — o .ics substitui o evento antigo; no Google, apague o anterior."
+                  : "O evento já vem com lembrete 2 horas antes."
+              }
+            />
+          </Paper>
+        )}
 
         {actionMessage && (
           <Alert severity="warning" sx={{ mb: 2 }}>

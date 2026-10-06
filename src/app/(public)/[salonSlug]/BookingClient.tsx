@@ -24,6 +24,7 @@ import {
   getSavedAppointmentTokens,
   addSavedAppointmentToken,
 } from "@/lib/clientStorage";
+import AddToCalendarButtons, { type CalendarLinks } from "./AddToCalendarButtons";
 
 type Professional = { id: string; name: string; photoUrl: string | null; serviceIds: string[] };
 type Service = { id: string; name: string; durationMinutes: number; priceCents: number; imageUrl: string | null };
@@ -69,6 +70,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [manageUrl, setManageUrl] = useState<string | null>(null);
+  const [calendarLinks, setCalendarLinks] = useState<CalendarLinks | null>(null);
 
   const [myAppointments, setMyAppointments] = useState<MyAppointment[]>([]);
 
@@ -174,6 +176,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
         return;
       }
       setManageUrl(data.manageUrl);
+      setCalendarLinks(data.calendar ?? null);
       saveClientInfo(salonSlug, { name: clientName, phone: clientPhone });
       addSavedAppointmentToken(salonSlug, data.accessToken);
     } finally {
@@ -235,6 +238,11 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
               {manageUrl}
             </a>
           </Paper>
+          {calendarLinks && (
+            <Box sx={{ mt: 3, textAlign: "left" }}>
+              <AddToCalendarButtons links={calendarLinks} note="O evento já vem com lembrete 2 horas antes." />
+            </Box>
+          )}
         </Box>
       </Box>
     );

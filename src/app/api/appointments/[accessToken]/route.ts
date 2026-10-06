@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { calendarLinksFor } from "@/lib/calendarLinks";
 
 /**
  * GET /api/appointments/:accessToken
@@ -36,5 +37,6 @@ export async function GET(
     rescheduledCount: appointment.rescheduledCount,
     hasReview: appointment.review !== null,
     canReview: appointment.status === "COMPLETED" && appointment.review === null,
+    calendar: calendarLinksFor(appointment),
   });
 }

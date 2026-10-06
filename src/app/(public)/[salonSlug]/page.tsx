@@ -12,6 +12,7 @@ import { getSession } from "@/lib/auth";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { absoluteUrl } from "@/lib/appUrl";
 import { storedImageUrl } from "@/lib/storedImages";
+import { formatSalonAddress } from "@/lib/salonAddress";
 import { getPublicReviews } from "@/lib/reviews";
 import { reservePackagePublicAction } from "@/lib/actions/package";
 import SalonThemeProvider from "./SalonThemeProvider";
@@ -84,20 +85,6 @@ export async function generateMetadata({
   };
 }
 
-function formatAddress(salon: {
-  addressStreet: string | null;
-  addressNumber: string | null;
-  addressNeighborhood: string | null;
-  addressCity: string | null;
-  addressState: string | null;
-}) {
-  const line1 = [salon.addressStreet, salon.addressNumber].filter(Boolean).join(", ");
-  const line2 = [salon.addressNeighborhood, salon.addressCity && salon.addressState ? `${salon.addressCity}/${salon.addressState}` : salon.addressCity]
-    .filter(Boolean)
-    .join(" — ");
-  return [line1, line2].filter(Boolean).join(" · ");
-}
-
 export default async function BookingPage({
   params,
 }: {
@@ -122,7 +109,7 @@ export default async function BookingPage({
   const subscriptionBlocked = getSubscriptionAccess(salon.subscription) === "BLOCKED";
   const isBlocked = (!salon.publishedAt || subscriptionBlocked) && !isOwnerPreview;
 
-  const address = formatAddress(salon);
+  const address = formatSalonAddress(salon);
   const hasSocial = salon.instagramUrl || salon.facebookUrl || salon.tiktokUrl || salon.websiteUrl;
   const coverUrl = salon.coverImageData
     ? `/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`
