@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import ThemeRegistry from "./ThemeRegistry";
+import PwaRegister from "./PwaRegister";
 import { getAppUrl } from "@/lib/appUrl";
 
 // Redesign Fase G: serifada nos títulos (Fraunces) + sans no corpo (Inter) —
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" className={`${fraunces.variable} ${inter.variable}`}>
       <body>
         <ThemeRegistry>{children}</ThemeRegistry>
+        <PwaRegister />
       </body>
     </html>
   );

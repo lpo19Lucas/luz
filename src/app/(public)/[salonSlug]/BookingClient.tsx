@@ -25,6 +25,7 @@ import {
   addSavedAppointmentToken,
 } from "@/lib/clientStorage";
 import AddToCalendarButtons, { type CalendarLinks } from "./AddToCalendarButtons";
+import InstallAppPrompt from "../../InstallAppPrompt";
 
 type Professional = { id: string; name: string; photoUrl: string | null; serviceIds: string[] };
 type Service = { id: string; name: string; durationMinutes: number; priceCents: number; imageUrl: string | null };
@@ -243,6 +244,12 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
               <AddToCalendarButtons links={calendarLinks} note="O evento já vem com lembrete 2 horas antes." />
             </Box>
           )}
+          <Box sx={{ mt: 2, textAlign: "left" }}>
+            <InstallAppPrompt
+              appName={salon.name}
+              description="Agende de novo em um toque e acompanhe seus horários pela tela inicial do celular."
+            />
+          </Box>
         </Box>
       </Box>
     );

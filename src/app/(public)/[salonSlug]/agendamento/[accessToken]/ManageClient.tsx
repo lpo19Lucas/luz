@@ -16,6 +16,7 @@ import {
   Rating,
 } from "@mui/material";
 import AddToCalendarButtons, { type CalendarLinks } from "../../AddToCalendarButtons";
+import InstallAppPrompt from "../../../../InstallAppPrompt";
 
 type AppointmentDetails = {
   status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
@@ -243,6 +244,13 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
             />
           </Paper>
         )}
+
+        <Box sx={{ mb: 2 }}>
+          <InstallAppPrompt
+            appName={appointment.salonName}
+            description="Seus horários e o agendamento a um toque, direto da tela inicial."
+          />
+        </Box>
 
         {actionMessage && (
           <Alert severity="warning" sx={{ mb: 2 }}>

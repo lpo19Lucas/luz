@@ -7,6 +7,14 @@ import { whatsappLink } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import DashboardChrome from "./DashboardChrome";
+import type { Metadata } from "next";
+
+// PWA: o painel instala como o app "Luz" (abre na /agenda).
+export const metadata: Metadata = {
+  manifest: "/app.webmanifest",
+  appleWebApp: { capable: true, title: "Luz", statusBarStyle: "black-translucent" },
+  icons: { apple: "/pwa-icon?app=luz&size=192" },
+};
 
 const NAV_ITEMS = [
   { href: "/inicio", label: "Início", icon: "🏠" },

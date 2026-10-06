@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import InstallAppPrompt from "../InstallAppPrompt";
 import {
   Box,
   Typography,
@@ -121,6 +122,7 @@ export default function DashboardChrome({
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
       <Box sx={{ p: 1.5 }}>
+        <InstallAppPrompt appName="Luz" variant="sidebar" />
         <Typography
           component={Link}
           href={`/${salonSlug}`}
