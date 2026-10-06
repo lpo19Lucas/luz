@@ -7,6 +7,12 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { WEEKDAYS } from "@/lib/weekdays";
 import { readImageField, setEntityImage, deleteStoredImage } from "@/lib/storedImages";
+import {
+  grantProfessionalAccess,
+  resendProfessionalLink,
+  revokeProfessionalAccess,
+  ProfessionalAccessError,
+} from "@/lib/professionalAccess";
 
 function parseAvailabilityFromForm(formData: FormData) {
   const rows: { weekday: number; startTime: string; endTime: string }[] = [];
@@ -127,4 +133,45 @@ export async function deleteProfessionalAction(formData: FormData) {
     }
   }
   revalidatePath("/profissionais");
+}
+
+// ------------------------------------------------------------
+// Acesso do profissional (Fase P) — só o dono (getCurrentSalon).
+// ------------------------------------------------------------
+
+export type AccessFormState = { error?: string; success?: string; link?: string; whatsappHref?: string | null } | undefined;
+
+export async function grantProfessionalAccessAction(_prev: AccessFormState, formData: FormData): Promise<AccessFormState> {
+  const salon = await getCurrentSalon();
+  try {
+    const result = await grantProfessionalAccess({
+      salonId: salon.id,
+      professionalId: String(formData.get("professionalId") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      phone: String(formData.get("phone") ?? ""),
+    });
+    revalidatePath(`/profissionais/${String(formData.get("professionalId"))}`);
+    return { success: `Convite criado (vale ${result.expiresInLabel}).`, link: result.link, whatsappHref: result.whatsappHref };
+  } catch (err) {
+    if (err instanceof ProfessionalAccessError) return { error: err.message };
+    throw err;
+  }
+}
+
+export async function resendProfessionalLinkAction(_prev: AccessFormState, formData: FormData): Promise<AccessFormState> {
+  const salon = await getCurrentSalon();
+  try {
+    const result = await resendProfessionalLink(salon.id, String(formData.get("professionalId") ?? ""));
+    return { success: `Novo link (vale ${result.expiresInLabel}).`, link: result.link, whatsappHref: result.whatsappHref };
+  } catch (err) {
+    if (err instanceof ProfessionalAccessError) return { error: err.message };
+    throw err;
+  }
+}
+
+export async function revokeProfessionalAccessAction(formData: FormData) {
+  const salon = await getCurrentSalon();
+  const professionalId = String(formData.get("professionalId") ?? "");
+  await revokeProfessionalAccess(salon.id, professionalId);
+  revalidatePath(`/profissionais/${professionalId}`);
 }

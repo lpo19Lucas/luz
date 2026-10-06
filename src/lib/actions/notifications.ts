@@ -1,18 +1,23 @@
 "use server";
 
-import { getCurrentSalon } from "@/lib/currentSalon";
+import { getCurrentMember } from "@/lib/currentSalon";
 import { notify } from "@/lib/push";
 
 export type TestNotificationState = { error?: string; success?: string } | undefined;
 
-/** Configurações → "Enviar notificação de teste" pros aparelhos do dono. */
+/** "Enviar notificação de teste" pros aparelhos de quem está logado (dono ou profissional). */
 export async function sendTestNotificationAction(): Promise<TestNotificationState> {
-  const salon = await getCurrentSalon();
+  const member = await getCurrentMember();
   const result = await notify({
-    salonId: salon.id,
-    recipient: { userId: salon.ownerId },
+    salonId: member.salon.id,
+    recipient: { userId: member.userId },
     type: "TEST",
-    payload: { title: "Luz", body: "Notificações funcionando neste aparelho! 🎉", url: "/agenda", tag: "teste" },
+    payload: {
+      title: "Luz",
+      body: "Notificações funcionando neste aparelho! 🎉",
+      url: member.role === "OWNER" ? "/agenda" : "/minha-agenda",
+      tag: "teste",
+    },
   });
   switch (result.status) {
     case "SENT":

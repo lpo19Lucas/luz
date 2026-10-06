@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { Paper, Stack, TextField, Button, Alert, MenuItem, Typography, Divider } from "@mui/material";
 import Link from "next/link";
 import { createSalonAction } from "@/lib/actions/admin";
-import { GeneratedLink } from "../[id]/SalonAdminForms";
+import GeneratedLink from "../../../../GeneratedLink";
 
 export default function NewSalonForm({ plans, trialDays }: { plans: { value: string; label: string }[]; trialDays: number }) {
   const [state, action, pending] = useActionState(createSalonAction, undefined);

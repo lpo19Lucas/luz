@@ -7,7 +7,7 @@ import { createSession, destroySession, hashPassword, verifyPassword } from "@/l
 import { provisionSalon, ProvisionError } from "@/lib/salonProvisioning";
 import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
-import { getCurrentSalon } from "@/lib/currentSalon";
+import { getCurrentMember } from "@/lib/currentSalon";
 import { acceptCurrentTerms } from "@/lib/termsAcceptance";
 import { revalidatePath } from "next/cache";
 
@@ -88,7 +88,7 @@ export async function logoutAction() {
 
 /** Aviso do painel pra contas antigas/convites: aceitar a versão atual dos termos. */
 export async function acceptTermsAction() {
-  const salon = await getCurrentSalon();
-  await acceptCurrentTerms(salon.ownerId);
+  const member = await getCurrentMember();
+  await acceptCurrentTerms(member.userId);
   revalidatePath("/", "layout");
 }

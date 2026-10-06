@@ -41,6 +41,7 @@ model User {
   salons              Salon[]
   passwordResetTokens PasswordResetToken[]
   pushSubscriptions   PushSubscription[]
+  professionalLinks   Professional[]
 
   @@map("users")
 }
@@ -155,6 +156,13 @@ model Professional {
   // Foto enviada pelo dono (StoredImage) — servida por /api/images/:id.
   photoImageId String?
 
+  // Acesso do profissional (Fase P): conta própria convidada pelo dono, que
+  // vê só a própria agenda e recebe as próprias notificações. Null = sem
+  // acesso (só o dono gerencia). Uma pessoa pode atender em mais de um salão.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  phone  String? // WhatsApp do profissional — pra enviar o convite
+
   // Comissão (feature "Comissão por profissional"): % individual sobre o
   // preço do serviço nos atendimentos COMPLETED. Sem valor padrão de salão —
   // cada profissional precisa da própria config (decisão do Lucas).
@@ -166,6 +174,7 @@ model Professional {
   appointments Appointment[]
   agendaBlocks AgendaBlock[]
 
+  @@unique([salonId, userId])
   @@index([salonId])
   @@map("professionals")
 }
@@ -380,6 +389,7 @@ enum AppointmentEventActor {
   CLIENT
   OWNER
   SYSTEM
+  PROFESSIONAL // profissional com acesso próprio (Fase P)
 }
 
 model AppointmentEvent {

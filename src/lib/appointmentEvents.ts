@@ -33,4 +33,5 @@ export const ACTOR_LABEL: Record<AppointmentEventActor, string> = {
   CLIENT: "Cliente",
   OWNER: "Salão",
   SYSTEM: "Automático",
+  PROFESSIONAL: "Profissional",
 };

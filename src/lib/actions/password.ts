@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSession } from "@/lib/auth";
-import { getCurrentSalon } from "@/lib/currentSalon";
+import { getCurrentMember } from "@/lib/currentSalon";
 import { requestPasswordReset, resetPasswordWithToken, changePassword, PasswordResetError } from "@/lib/passwordReset";
 import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
 
@@ -45,12 +45,12 @@ export async function resetPasswordAction(_prev: PasswordFormState, formData: Fo
   redirect(result.purpose === "INVITE" ? "/inicio" : "/agenda");
 }
 
-/** Configurações → Alterar senha. */
+/** Configurações → Alterar senha (dono ou profissional). */
 export async function changePasswordAction(_prev: PasswordFormState, formData: FormData): Promise<PasswordFormState> {
-  const salon = await getCurrentSalon();
+  const member = await getCurrentMember();
   try {
     await changePassword({
-      userId: salon.ownerId,
+      userId: member.userId,
       currentPassword: String(formData.get("currentPassword") ?? ""),
       newPassword: String(formData.get("newPassword") ?? ""),
       confirmation: String(formData.get("confirmation") ?? ""),
@@ -61,6 +61,6 @@ export async function changePasswordAction(_prev: PasswordFormState, formData: F
   }
   // A troca derruba as sessões antigas (inclusive a atual) — emite uma nova
   // pra este navegador continuar logado; os outros dispositivos saem.
-  await createSession(salon.ownerId);
+  await createSession(member.userId);
   return { success: "Senha alterada. Outros dispositivos conectados foram desconectados." };
 }

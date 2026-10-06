@@ -23,6 +23,9 @@ export async function setAppointmentOutcome(params: {
   salonId: string;
   appointmentId: string;
   outcome: AppointmentOutcome;
+  /** Fase P: profissional só mexe nos próprios atendimentos. */
+  professionalId?: string;
+  actor?: "OWNER" | "PROFESSIONAL";
   now?: Date;
 }): Promise<SetOutcomeResult> {
   const { salonId, appointmentId, outcome } = params;
@@ -30,7 +33,7 @@ export async function setAppointmentOutcome(params: {
 
   // Escopo por salão: o dono só mexe em agendamento do próprio salão.
   const appointment = await prisma.appointment.findFirst({
-    where: { id: appointmentId, salonId },
+    where: { id: appointmentId, salonId, ...(params.professionalId ? { professionalId: params.professionalId } : {}) },
   });
   if (!appointment) return { ok: false, reason: "NOT_FOUND" };
   if (appointment.status === "CANCELLED") return { ok: false, reason: "CANCELLED" };
@@ -53,7 +56,7 @@ export async function setAppointmentOutcome(params: {
     salonId,
     appointmentId: appointment.id,
     type: eventType,
-    actor: "OWNER",
+    actor: params.actor ?? "OWNER",
   });
 
   return { ok: true };

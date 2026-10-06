@@ -8,6 +8,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resetDb, createTestSalon, futureSlotTime } from "@tests/integration/helpers";
 import { createAppointment } from "@/lib/booking";
+import { grantProfessionalAccess } from "@/lib/professionalAccess";
 
 let session: { userId: string; issuedAt: number } | null = null;
 jest.mock("@/lib/auth", () => ({ ...jest.requireActual("@/lib/auth"), getSession: async () => session }));
@@ -73,6 +74,14 @@ describe("/api/push/subscription", () => {
     session = { userId: t.owner.id, issuedAt: Math.floor(Date.now() / 1000) };
     expect(await (await POST(req("POST", { subscription }))).json()).toEqual({ ok: true, audience: "owner" });
     expect((await prisma.pushSubscription.findFirstOrThrow()).userId).toBe(t.owner.id);
+  });
+
+  it("profissional com acesso se inscreve pela própria sessão", async () => {
+    const t = await createTestSalon();
+    const { userId } = await grantProfessionalAccess({ salonId: t.salon.id, professionalId: t.professional.id, email: "joao@x.com" });
+    session = { userId, issuedAt: Math.floor(Date.now() / 1000) };
+    expect(await (await POST(req("POST", { subscription }))).json()).toEqual({ ok: true, audience: "professional" });
+    expect(await prisma.pushSubscription.findFirstOrThrow()).toMatchObject({ userId, salonId: t.salon.id });
   });
 
   it("sem sessão nem token → 401; sessão de conta bloqueada → 401", async () => {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession, isSessionStillValid } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
+import { resolveMember } from "@/lib/members";
 import { getVapidPublicKey, isPushConfigured, isValidSubscription, removeSubscription, saveSubscription } from "@/lib/push";
 
 /**
@@ -9,7 +10,7 @@ import { getVapidPublicKey, isPushConfigured, isValidSubscription, removeSubscri
  * GET    → chave pública VAPID (o navegador precisa dela pra se inscrever).
  * POST   { subscription, accessToken? }
  *          com accessToken: aparelho do CLIENTE daquele agendamento;
- *          sem: aparelho do DONO logado (sessão).
+ *          sem: aparelho do DONO ou PROFISSIONAL logado (sessão).
  * DELETE { endpoint } → desinscreve este aparelho.
  */
 
@@ -37,18 +38,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, audience: "client" });
   }
 
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-  const salon = await prisma.salon.findFirst({
-    where: { ownerId: session.userId },
-    orderBy: { createdAt: "asc" },
-    select: { id: true, owner: { select: { disabledAt: true, passwordChangedAt: true } } },
-  });
-  if (!salon || !isSessionStillValid(session, salon.owner)) {
-    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
-  }
-  await saveSubscription(body.subscription, { salonId: salon.id, userId: session.userId }, userAgent);
-  return NextResponse.json({ ok: true, audience: "owner" });
+  // Sem token: aparelho de quem está logado — dono ou profissional (Fase P).
+  const member = await resolveMember(await getSession());
+  if (!member) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  await saveSubscription(body.subscription, { salonId: member.salon.id, userId: member.userId }, userAgent);
+  return NextResponse.json({ ok: true, audience: member.role === "OWNER" ? "owner" : "professional" });
 }
 
 export async function DELETE(req: NextRequest) {

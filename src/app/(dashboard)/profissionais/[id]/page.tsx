@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { updateProfessionalAction } from "@/lib/actions/professional";
 import { AvailabilityFields } from "../AvailabilityFields";
 import ImageUploadField from "../../ImageUploadField";
+import ProfessionalAccess from "./ProfessionalAccess";
 import { storedImageUrl } from "@/lib/storedImages";
 
 export default async function EditarProfissionalPage({
@@ -18,7 +19,11 @@ export default async function EditarProfissionalPage({
 
   const professional = await prisma.professional.findFirst({
     where: { id, salonId: salon.id },
-    include: { availability: true, services: true },
+    include: {
+      availability: true,
+      services: true,
+      user: { select: { email: true, termsVersion: true, passwordResetTokens: { where: { usedAt: { not: null } }, take: 1, select: { id: true } } } },
+    },
   });
   if (!professional) notFound();
 
@@ -68,6 +73,21 @@ export default async function EditarProfissionalPage({
           </Stack>
         </Stack>
       </Paper>
+
+      <ProfessionalAccess
+        professionalId={professional.id}
+        professionalName={professional.name}
+        phone={professional.phone}
+        access={
+          professional.user
+            ? {
+                email: professional.user.email,
+                // Ativo = já definiu a senha (usou um link) ou já tinha conta com termos aceitos.
+                activated: professional.user.passwordResetTokens.length > 0 || professional.user.termsVersion !== null,
+              }
+            : null
+        }
+      />
     </Box>
   );
 }
