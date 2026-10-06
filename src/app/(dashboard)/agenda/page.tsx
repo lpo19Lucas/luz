@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { setAppointmentOutcomeAction, cancelAppointmentOwnerAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
+import { whatsappReminderLink } from "@/lib/whatsappReminder";
 import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, formatSalonDate, formatSalonTime } from "@/lib/timezone";
 import { getAgendaKpis, type AgendaKpis } from "@/lib/agendaKpis";
 
@@ -154,6 +155,17 @@ export default async function AgendaPage({
   });
 
   const now = new Date();
+  // Clientes do dia com notificação push ativa — pros outros, o card mostra
+  // "Lembrar no WhatsApp" em destaque (E5).
+  const dayClientIds = professionals.flatMap((p) => p.appointments.map((a) => a.clientId));
+  const clientsWithPush = new Set(
+    (
+      await prisma.pushSubscription.findMany({
+        where: { salonId: salon.id, clientId: { in: dayClientIds } },
+        select: { clientId: true },
+      })
+    ).map((s) => s.clientId)
+  );
 
   const dateLabel = formatSalonDate(date, {
     weekday: "long",
@@ -252,7 +264,7 @@ export default async function AgendaPage({
                       (B3) — remarcar reusa a mesma tela do link público do cliente. */}
                   {appt.startAt > now &&
                     (appt.status === "CONFIRMED" || appt.status === "AWAITING_CONFIRMATION") && (
-                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.75 }}>
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 0.75, flexWrap: "wrap", gap: 0.5 }}>
                         <CancelButton appointmentId={appt.id} />
                         <Button
                           component={Link}
@@ -262,6 +274,22 @@ export default async function AgendaPage({
                         >
                           Remarcar
                         </Button>
+                        {clientsWithPush.has(appt.clientId) ? (
+                          <Chip label="🔔 recebe lembrete" size="small" variant="outlined" title="O cliente ativou as notificações do app" />
+                        ) : (
+                          <Button
+                            component="a"
+                            href={whatsappReminderLink({ ...appt, professionalName: prof.name, salon })}
+                            target="_blank"
+                            rel="noopener"
+                            size="small"
+                            color="success"
+                            sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}
+                            title="Cliente sem notificações ativas — abre o WhatsApp com o lembrete pronto"
+                          >
+                            Lembrar no WhatsApp
+                          </Button>
+                        )}
                       </Stack>
                     )}
                   {/* Depois que o horário começa, o dono marca o desfecho — é isso

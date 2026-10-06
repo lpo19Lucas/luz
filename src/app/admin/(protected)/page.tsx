@@ -2,11 +2,12 @@
 // (carência, bloqueio, teste ou plano vencendo).
 import { Box, Typography, Paper, Stack, Button } from "@mui/material";
 import Link from "next/link";
-import { getPlatformOverview } from "@/lib/adminSalons";
+import { getPlatformOverview, getNotificationStats } from "@/lib/adminSalons";
 import { formatBRL } from "@/lib/plans";
 import { formatSalonDate } from "@/lib/timezone";
 import { isEmailConfigured } from "@/lib/email";
 import { isLegalEntityConfigured } from "@/lib/legal";
+import { isPushConfigured } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,12 @@ function Tile({ label, value, hint }: { label: string; value: string | number; h
 }
 
 export default async function AdminOverviewPage() {
-  const o = await getPlatformOverview();
+  const [o, push] = await Promise.all([getPlatformOverview(), getNotificationStats()]);
   const setupWarnings = [
     !isEmailConfigured() && "E-mail não configurado (RESEND_API_KEY): o \"esqueci minha senha\" não envia — gere o link pelo salão.",
     !isLegalEntityConfigured() && "Dados da empresa (LEGAL_*) não preenchidos: os Termos mostram \"[A DEFINIR]\".",
     !process.env.PLATFORM_PIX_KEY && "Chave PIX da plataforma (PLATFORM_PIX_KEY) não configurada.",
+    !isPushConfigured() && "Notificações push desligadas: configure VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY.",
   ].filter(Boolean) as string[];
 
   return (
@@ -60,6 +62,16 @@ export default async function AdminOverviewPage() {
         <Tile label="Publicados" value={o.published} />
         <Tile label="Carência / bloqueados" value={`${o.access.GRACE} / ${o.access.BLOCKED}`} />
         <Tile label="Agendamentos (30 dias)" value={o.appointmentsLast30} />
+        <Tile
+          label="Aparelhos com notificação"
+          value={push.staffDevices + push.clientDevices}
+          hint={`${push.staffDevices} da equipe · ${push.clientDevices} de clientes`}
+        />
+        <Tile
+          label="Notificações (7 dias)"
+          value={push.last7Days.sent}
+          hint={`${push.deliveryRate === null ? "—" : `${Math.round(push.deliveryRate * 100)}% entregues`} · ${push.last7Days.noSubscription} sem aparelho`}
+        />
       </Stack>
 
       <Paper elevation={1}>

@@ -65,3 +65,13 @@ describe("validateNewPassword", () => {
     expect(validateNewPassword("senhaforte1", "senhaforte1")).toBeNull();
   });
 });
+
+describe("notificações e equipe nos documentos", () => {
+  it("a política cobre notificações, service worker e contas de profissional", () => {
+    const text = JSON.stringify(privacyPolicy());
+    expect(text).toContain("Ativar notificações");
+    expect(text).toContain("service worker");
+    expect(text).toContain("Profissionais com acesso");
+    expect(JSON.stringify(termsOfUse())).toContain("Profissional com acesso");
+  });
+});

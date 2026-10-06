@@ -343,3 +343,32 @@ export async function adminUpdatePlatformPlan(
     update: values,
   });
 }
+
+// ------------------------------------------------------------
+// Notificações (Fase E5): aparelhos inscritos e entrega nos últimos 7 dias
+// ------------------------------------------------------------
+
+export async function getNotificationStats(params: { salonId?: string; now?: Date } = {}) {
+  const now = params.now ?? new Date();
+  const scope = params.salonId ? { salonId: params.salonId } : {};
+  const since = new Date(now.getTime() - 7 * DAY_MS);
+  const [staffDevices, clientDevices, byStatus] = await Promise.all([
+    prisma.pushSubscription.count({ where: { ...scope, userId: { not: null } } }),
+    prisma.pushSubscription.count({ where: { ...scope, clientId: { not: null } } }),
+    prisma.notificationLog.groupBy({
+      by: ["status"],
+      where: { ...scope, createdAt: { gte: since }, type: { not: "TEST" } },
+      _count: { _all: true },
+    }),
+  ]);
+  const count = (status: "SENT" | "FAILED" | "NO_SUBSCRIPTION") => byStatus.find((s) => s.status === status)?._count._all ?? 0;
+  const sent = count("SENT");
+  const failed = count("FAILED");
+  return {
+    staffDevices,
+    clientDevices,
+    last7Days: { sent, failed, noSubscription: count("NO_SUBSCRIPTION") },
+    // Entre quem tinha aparelho, quantos receberam.
+    deliveryRate: sent + failed > 0 ? sent / (sent + failed) : null,
+  };
+}

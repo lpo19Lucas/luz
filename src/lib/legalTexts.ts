@@ -35,6 +35,7 @@ export function termsOfUse(): Doc {
         paragraphs: [
           "Usuário Assinante é a pessoa (física ou jurídica) que cria uma conta para gerir o seu estabelecimento. Deve ser maior de 18 anos e capaz civilmente, e declara que as informações fornecidas no cadastro são verdadeiras.",
           "Cliente Final é a pessoa que agenda um horário por meio do link público de um estabelecimento, sem precisar de conta.",
+          "Profissional com acesso é a pessoa da equipe do estabelecimento que o Usuário Assinante convida para ver a própria agenda e receber os próprios agendamentos. O Usuário Assinante é responsável por conceder e retirar esses acessos.",
         ],
       },
       {
@@ -126,6 +127,7 @@ export function privacyPolicy(): Doc {
         paragraphs: [
           "Usuário Assinante: nome, e-mail, telefone, senha (armazenada apenas de forma criptografada, com hash), dados do estabelecimento (nome, endereço, CNPJ, redes sociais, fotos), registro de aceite destes documentos e dados de uso e acesso (data e hora de login, endereço IP para segurança).",
           "Cliente Final: nome, telefone, histórico de agendamentos (serviço, profissional, data, comparecimento), avaliações que optar por deixar e anotações que o estabelecimento registrar.",
+          "Notificações (quem ativar): o endereço técnico de entrega fornecido pelo navegador ou celular (inscrição de push, com chaves de criptografia), o tipo de navegador e o registro de cada notificação enviada (tipo, data e se foi entregue). Profissionais com acesso: nome, e-mail, telefone e senha (com hash).",
           "Não coletamos dados pessoais sensíveis (art. 5º, II, da LGPD) de forma intencional. O estabelecimento não deve registrar esse tipo de dado nas anotações de clientes.",
         ],
       },
@@ -133,6 +135,7 @@ export function privacyPolicy(): Doc {
         title: "Para que usamos e com qual base legal",
         paragraphs: [
           "Execução de contrato (art. 7º, V): criar e manter a conta, operar a agenda, permitir o agendamento online, enviar confirmações, lembretes e links de gerenciamento do agendamento.",
+          "Consentimento (art. 7º, I) para notificações no aparelho: só são enviadas depois que a pessoa toca em \"Ativar notificações\" e autoriza no navegador; podem ser desativadas a qualquer momento pelo próprio botão ou nas configurações do aparelho.",
           "Legítimo interesse (art. 7º, IX): segurança da plataforma (prevenção de fraude e de acesso indevido, limite de tentativas de login), suporte e melhoria do produto com dados agregados.",
           "Cumprimento de obrigação legal (art. 7º, II): guarda de registros de acesso (Marco Civil da Internet, art. 15) e documentos fiscais.",
           "Consentimento (art. 7º, I): comunicações de marketing, quando houver, sempre com opção de descadastro.",
@@ -141,7 +144,7 @@ export function privacyPolicy(): Doc {
       {
         title: "Com quem compartilhamos",
         paragraphs: [
-          "Não vendemos dados pessoais. Compartilhamos apenas com fornecedores necessários para operar o serviço — hospedagem e banco de dados em nuvem, envio de e-mails transacionais e, quando ativadas, ferramentas de inteligência artificial para gerar textos do perfil do estabelecimento (sem envio de dados de clientes) —, todos sujeitos a obrigações de confidencialidade e segurança.",
+          "Não vendemos dados pessoais. Compartilhamos apenas com fornecedores necessários para operar o serviço — hospedagem e banco de dados em nuvem, envio de e-mails transacionais, os serviços de notificação dos próprios navegadores e sistemas (como Google, Apple e Mozilla, que recebem o conteúdo da notificação criptografado) e, quando ativadas, ferramentas de inteligência artificial para gerar textos do perfil do estabelecimento (sem envio de dados de clientes) —, todos sujeitos a obrigações de confidencialidade e segurança.",
           "Alguns desses fornecedores podem armazenar dados fora do Brasil; nesses casos, adotamos as salvaguardas previstas no art. 33 da LGPD.",
           "Também podemos compartilhar dados por ordem judicial ou requisição de autoridade competente.",
         ],
@@ -150,7 +153,8 @@ export function privacyPolicy(): Doc {
         title: "Por quanto tempo guardamos",
         paragraphs: [
           "Enquanto a conta estiver ativa. Após o encerramento, os dados são mantidos por até 30 dias para eventual exportação e depois excluídos ou anonimizados, exceto registros que a lei obrigue a guardar (como registros de acesso, por 6 meses, e documentos fiscais, pelo prazo legal).",
-          "Links de redefinição de senha expiram em poucas horas e são de uso único.",
+          "Links de redefinição de senha expiram em poucas horas e são de uso único; convites, em 7 dias.",
+          "Inscrições de notificação são apagadas quando a pessoa desativa, quando o aparelho deixa de aceitá-las ou quando o acesso do profissional é retirado.",
         ],
       },
       {
@@ -171,6 +175,7 @@ export function privacyPolicy(): Doc {
         title: "Cookies",
         paragraphs: [
           "Usamos apenas cookies essenciais: o de sessão, que mantém o usuário logado no painel. Não usamos cookies de publicidade. O navegador do Cliente Final pode guardar localmente os dados do último agendamento para facilitar o próximo, e o próprio cliente pode apagá-los a qualquer momento.",
+          "Para funcionar como aplicativo (instalável e com notificações), o site registra um service worker no navegador, que guarda apenas uma página de \"sem conexão\" — nenhum dado pessoal.",
         ],
       },
       {
@@ -237,7 +242,7 @@ export function licenseAgreement(): Doc {
           "Fornecer informações verdadeiras no cadastro e mantê-las atualizadas, inclusive dados fiscais quando solicitados.",
           "Pagar pontualmente o plano contratado.",
           "Usar a plataforma conforme os Termos de Uso e a legislação, sendo a única responsável pelos serviços prestados aos seus clientes, preços e políticas divulgadas.",
-          "Manter a confidencialidade das credenciais de acesso.",
+          "Manter a confidencialidade das credenciais de acesso e gerenciar os acessos que conceder a profissionais da equipe, retirando-os quando a pessoa deixar o estabelecimento.",
           "Ter base legal para os dados pessoais de clientes que inserir na plataforma, informar seus clientes sobre o tratamento e atender aos pedidos de titulares (como Controladora).",
         ],
       },

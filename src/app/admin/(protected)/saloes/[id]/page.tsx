@@ -4,7 +4,7 @@
 import { notFound } from "next/navigation";
 import { Box, Typography, Paper, Stack, Chip, Button, Divider } from "@mui/material";
 import Link from "next/link";
-import { getSalonForAdmin } from "@/lib/adminSalons";
+import { getSalonForAdmin, getNotificationStats } from "@/lib/adminSalons";
 import { getPlatformPlans, PLAN_LABEL, formatBRL } from "@/lib/plans";
 import { formatSalonDate } from "@/lib/timezone";
 import { formatPhone } from "@/lib/phone";
@@ -45,7 +45,7 @@ function Info({ label, value }: { label: string; value: React.ReactNode }) {
 
 export default async function AdminSalaoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [salon, plans] = await Promise.all([getSalonForAdmin(id), getPlatformPlans()]);
+  const [salon, plans, push] = await Promise.all([getSalonForAdmin(id), getPlatformPlans(), getNotificationStats({ salonId: id })]);
   if (!salon) notFound();
   const sub = salon.subscription;
   const paidPlans = plans.filter((p) => p.plan !== "TRIAL");
@@ -169,6 +169,10 @@ export default async function AdminSalaoPage({ params }: { params: Promise<{ id:
               value={`${salon._count.appointments} no total, ${salon.appointmentsLast30} em 30 dias${
                 salon.lastAppointmentAt ? ` (último ${formatSalonDate(salon.lastAppointmentAt)})` : ""
               }`}
+            />
+            <Info
+              label="Notificações"
+              value={`${push.staffDevices} aparelho(s) da equipe, ${push.clientDevices} de clientes · ${push.last7Days.sent} enviadas em 7 dias`}
             />
             {salon.whatsappPhone && <Info label="WhatsApp do salão" value={formatPhone(salon.whatsappPhone)} />}
             <form action={setPublishedAction}>
