@@ -1,12 +1,24 @@
 "use server";
 
+import { createHash, timingSafeEqual } from "node:crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createAdminSession, destroyAdminSession } from "@/lib/auth";
+import type { SubscriptionPlan } from "@prisma/client";
 import { planDurationDays } from "@/lib/plans";
 
 export type FormState = { error: string } | undefined;
+
+/** Comparação em tempo constante — não vaza pelo tempo de resposta quantos
+ * caracteres da senha estão certos. */
+function safeEqual(a: string, b: string) {
+  const ha = createHash("sha256").update(a).digest();
+  const hb = createHash("sha256").update(b).digest();
+  return timingSafeEqual(ha, hb);
+}
 
 export async function adminLoginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const password = String(formData.get("password") ?? "");
@@ -15,7 +27,13 @@ export async function adminLoginAction(_prev: FormState, formData: FormData): Pr
   if (!expected) {
     return { error: "ADMIN_PASSWORD não configurada no servidor (ver .env.example)." };
   }
-  if (password !== expected) {
+  const key = `admin:${clientIpFromHeaders(await headers())}`;
+  if (await isRateLimited(key)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
+  const ok = safeEqual(password, expected);
+  await recordAuthAttempt(key, ok);
+  if (!ok) {
     return { error: "Senha incorreta." };
   }
 
@@ -52,7 +70,7 @@ export async function setSubscriptionStatusAction(formData: FormData) {
         ? {
             activatedAt: new Date(),
             activatedManuallyByEmail: "admin (painel /admin)",
-            currentPeriodEnd: nextPeriodEnd(subscription),
+            currentPeriodEnd: await nextPeriodEnd(subscription),
           }
         : {}),
     },
@@ -66,10 +84,10 @@ export async function setSubscriptionStatusAction(formData: FormData) {
  * o período em vez de perder os dias restantes, e renovar depois de vencido
  * conta a partir de hoje (não do passado).
  */
-function nextPeriodEnd(subscription: { plan: string; currentPeriodEnd: Date | null }) {
+async function nextPeriodEnd(subscription: { plan: SubscriptionPlan; currentPeriodEnd: Date | null }) {
   const base = subscription.currentPeriodEnd && subscription.currentPeriodEnd > new Date()
     ? subscription.currentPeriodEnd
     : new Date();
-  const days = planDurationDays(subscription.plan);
+  const days = await planDurationDays(subscription.plan);
   return new Date(base.getTime() + days * 24 * 60 * 60_000);
 }

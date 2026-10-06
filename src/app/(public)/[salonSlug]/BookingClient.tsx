@@ -439,6 +439,14 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
             >
               {submitting ? "Agendando..." : "Confirmar agendamento"}
             </Button>
+            {/* LGPD: aviso de tratamento de dados (nome/telefone) no momento da coleta. */}
+            <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
+              Seu nome e telefone são usados só para gerenciar este agendamento com o salão. Veja a{" "}
+              <a href="/privacidade" target="_blank" rel="noopener" style={{ color: "inherit" }}>
+                Política de Privacidade
+              </a>
+              .
+            </Typography>
           </Stack>
         </Section>
       </Box>

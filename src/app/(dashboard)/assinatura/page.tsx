@@ -6,7 +6,7 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { chooseSubscriptionPlan } from "@/lib/actions/salon";
 import { formatSalonDate } from "@/lib/timezone";
-import { PLANS, PLAN_LABEL, getPlatformPixKey } from "@/lib/plans";
+import { getPaidPlans, PLAN_LABEL, formatBRL, getPlatformPixKey } from "@/lib/plans";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -38,6 +38,7 @@ export default async function AssinaturaPage() {
 
   const access = getSubscriptionAccess(subscription);
   const platformPixKey = getPlatformPixKey();
+  const plans = await getPaidPlans();
 
   return (
     <Box>
@@ -84,23 +85,23 @@ export default async function AssinaturaPage() {
           Escolher plano
         </Typography>
         <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
-          {PLANS.map((plan) => (
+          {plans.map((plan) => (
             <Paper
-              key={plan.value}
+              key={plan.plan}
               variant="outlined"
               sx={{
                 p: 2.5,
                 flex: "1 1 180px",
                 textAlign: "center",
-                borderColor: subscription.plan === plan.value ? "primary.main" : "divider",
-                borderWidth: subscription.plan === plan.value ? 2 : 1,
+                borderColor: subscription.plan === plan.plan ? "primary.main" : "divider",
+                borderWidth: subscription.plan === plan.plan ? 2 : 1,
               }}
             >
               <Typography variant="overline" color="text.secondary">
                 {plan.label}
               </Typography>
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                R$ {plan.pricePerMonth}
+                {formatBRL(plan.pricePerMonthCents)}
                 <Typography component="span" variant="caption" color="text.secondary">
                   /mês
                 </Typography>
@@ -109,14 +110,14 @@ export default async function AssinaturaPage() {
                 {plan.sub}
               </Typography>
               <form action={chooseSubscriptionPlan}>
-                <input type="hidden" name="plan" value={plan.value} />
+                <input type="hidden" name="plan" value={plan.plan} />
                 <Button
                   type="submit"
                   size="small"
-                  variant={subscription.plan === plan.value ? "contained" : "outlined"}
+                  variant={subscription.plan === plan.plan ? "contained" : "outlined"}
                   fullWidth
                 >
-                  {subscription.plan === plan.value ? "Selecionado" : "Escolher"}
+                  {subscription.plan === plan.plan ? "Selecionado" : "Escolher"}
                 </Button>
               </form>
             </Paper>

@@ -16,6 +16,7 @@ import { reservePackagePublicAction } from "@/lib/actions/package";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 import ReviewsCarousel from "./ReviewsCarousel";
+import LegalFooterLinks from "../../LegalFooterLinks";
 
 const GALLERY_GRADIENTS = [
   "linear-gradient(160deg,#E8C9A0,#D4AF37)",
@@ -812,6 +813,9 @@ export default async function BookingPage({
               <Typography variant="caption" color="text.secondary">
                 {salon.name} · agendamento online pela Luz
               </Typography>
+              <Box sx={{ mt: 1 }}>
+                <LegalFooterLinks />
+              </Box>
             </Box>
           </>
         )}

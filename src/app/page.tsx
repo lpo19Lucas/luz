@@ -5,9 +5,10 @@
 import { Box, Typography, Stack, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { PLANS } from "@/lib/plans";
+import { getPaidPlans, getTrialDays, type PlanInfo } from "@/lib/plans";
 import { whatsappLink } from "@/lib/phone";
 import { absoluteUrl } from "@/lib/appUrl";
+import LegalFooterLinks from "./LegalFooterLinks";
 
 export const metadata: Metadata = {
   title: { absolute: "Luz — Agendamento online para salões e barbearias" },
@@ -71,7 +72,7 @@ function formatPrice(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function buildJsonLd() {
+function buildJsonLd(plans: PlanInfo[]) {
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -85,10 +86,10 @@ function buildJsonLd() {
         name: "Luz",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        offers: PLANS.map((plan) => ({
+        offers: plans.map((plan) => ({
           "@type": "Offer",
           name: plan.label,
-          price: plan.pricePerMonth.toFixed(2),
+          price: (plan.pricePerMonthCents / 100).toFixed(2),
           priceCurrency: "BRL",
         })),
       },
@@ -104,7 +105,11 @@ function buildJsonLd() {
   };
 }
 
-export default function LandingPage() {
+// Os planos vêm do banco (editáveis em /admin/planos) — revalida a cada 5 min.
+export const revalidate = 300;
+
+export default async function LandingPage() {
+  const [plans, trialDays] = await Promise.all([getPaidPlans(), getTrialDays()]);
   const salesPhone = process.env.NEXT_PUBLIC_SALES_WHATSAPP;
 
   return (
@@ -112,7 +117,7 @@ export default function LandingPage() {
       <script
         type="application/ld+json"
         // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd()) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(plans)) }}
       />
 
       {/* Nav */}
@@ -381,7 +386,7 @@ export default function LandingPage() {
             Planos
           </Typography>
           <Typography sx={{ fontSize: 14, color: "text.secondary", textAlign: "center", mb: 5 }}>
-            50 dias grátis pra testar tudo, sem cartão de crédito.
+            {trialDays} dias grátis pra testar tudo, sem cartão de crédito.
           </Typography>
           <Box
             sx={{
@@ -392,11 +397,11 @@ export default function LandingPage() {
               mx: "auto",
             }}
           >
-            {PLANS.map((plan) => {
-              const highlighted = plan.value === "YEARLY";
+            {plans.map((plan) => {
+              const highlighted = plan.plan === "YEARLY";
               return (
                 <Box
-                  key={plan.value}
+                  key={plan.plan}
                   sx={{
                     position: "relative",
                     bgcolor: highlighted ? "primary.main" : "background.default",
@@ -441,7 +446,7 @@ export default function LandingPage() {
                       my: 0.5,
                     }}
                   >
-                    {formatPrice(plan.pricePerMonth)}
+                    {formatPrice(plan.pricePerMonthCents / 100)}
                     <Typography component="span" sx={{ fontSize: 13, color: highlighted ? "#C3CAE0" : "text.secondary" }}>
                       /mês
                     </Typography>
@@ -541,6 +546,10 @@ export default function LandingPage() {
         >
           Criar meu salão grátis
         </Button>
+      </Box>
+
+      <Box component="footer" sx={{ py: 3, px: 2.5, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>
+        <LegalFooterLinks />
       </Box>
     </Box>
   );
