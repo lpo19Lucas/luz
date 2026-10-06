@@ -5,6 +5,8 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { updateProfessionalAction } from "@/lib/actions/professional";
 import { AvailabilityFields } from "../AvailabilityFields";
+import ImageUploadField from "../../ImageUploadField";
+import { storedImageUrl } from "@/lib/storedImages";
 
 export default async function EditarProfissionalPage({
   params,
@@ -31,6 +33,11 @@ export default async function EditarProfissionalPage({
       <Paper elevation={1} sx={{ p: 2.5, maxWidth: 520 }}>
         <Stack component="form" action={updateProfessionalAction} spacing={2}>
           <input type="hidden" name="id" value={professional.id} />
+          <ImageUploadField
+            label="Foto"
+            currentUrl={storedImageUrl(professional.photoImageId)}
+            fallback={professional.name.charAt(0).toUpperCase()}
+          />
           <TextField name="name" label="Nome" size="small" fullWidth required defaultValue={professional.name} />
           <TextField
             name="commissionPercent"

@@ -25,6 +25,9 @@ export function resizeImageToDataURL(file: File, maxWidth = 1280, quality = 0.82
           reject(new Error("Canvas não suportado"));
           return;
         }
+        // Fundo branco: PNG com transparência viraria preto no JPEG.
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
         resolve(canvas.toDataURL("image/jpeg", quality));
       };

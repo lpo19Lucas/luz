@@ -4,6 +4,8 @@ import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { updateServiceAction } from "@/lib/actions/service";
+import ImageUploadField from "../../ImageUploadField";
+import { storedImageUrl } from "@/lib/storedImages";
 
 export default async function EditarServicoPage({
   params,
@@ -25,6 +27,7 @@ export default async function EditarServicoPage({
       <Paper elevation={1} sx={{ p: 2.5, maxWidth: 480 }}>
         <Stack component="form" action={updateServiceAction} spacing={1.5}>
           <input type="hidden" name="id" value={service.id} />
+          <ImageUploadField label="Foto" shape="rounded" currentUrl={storedImageUrl(service.imageId)} />
           <TextField name="name" label="Nome" size="small" required defaultValue={service.name} />
           <Stack direction="row" spacing={1.5}>
             <TextField

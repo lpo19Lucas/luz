@@ -11,6 +11,7 @@ import { whatsappLink } from "@/lib/phone";
 import { getSession } from "@/lib/auth";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { absoluteUrl } from "@/lib/appUrl";
+import { storedImageUrl } from "@/lib/storedImages";
 import { getPublicReviews } from "@/lib/reviews";
 import { reservePackagePublicAction } from "@/lib/actions/package";
 import SalonThemeProvider from "./SalonThemeProvider";
@@ -33,6 +34,11 @@ const HOW_IT_WORKS = [
   { icon: "🗓️", title: "Escolha o horário", desc: "Vagas reais, atualizadas na hora." },
   { icon: "✅", title: "Pronto!", desc: "Confirmação na hora, sem precisar ligar." },
 ];
+
+/** Foto enviada pelo dono (stored_images) ou, no legado, a URL externa. */
+function photoOf(p: { photoImageId: string | null; photoUrl: string | null }) {
+  return storedImageUrl(p.photoImageId) ?? p.photoUrl;
+}
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -542,20 +548,31 @@ export default async function BookingPage({
                         border: "1px solid",
                         borderColor: "divider",
                         borderRadius: 4,
-                        p: 3,
+                        overflow: "hidden",
                         textDecoration: "none",
                         color: "inherit",
                         transition: "transform .15s ease, box-shadow .15s ease",
                         "&:hover": { transform: "translateY(-4px)", boxShadow: "0 16px 32px rgba(27,42,74,.1)" },
                       }}
                     >
-                      <Typography sx={{ fontSize: 16, fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
-                      <Typography sx={{ fontSize: 13, color: "text.secondary", mb: 2 }}>
-                        {s.durationMinutes} min
-                      </Typography>
-                      <Typography sx={{ fontSize: 18, fontWeight: 700, color: "primary.main" }}>
-                        {formatPrice(s.priceCents)}
-                      </Typography>
+                      {s.imageId && (
+                        <Box
+                          component="img"
+                          src={storedImageUrl(s.imageId)!}
+                          alt={s.name}
+                          loading="lazy"
+                          sx={{ display: "block", width: "100%", aspectRatio: "4 / 3", objectFit: "cover" }}
+                        />
+                      )}
+                      <Box sx={{ p: 3 }}>
+                        <Typography sx={{ fontSize: 16, fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
+                        <Typography sx={{ fontSize: 13, color: "text.secondary", mb: 2 }}>
+                          {s.durationMinutes} min
+                        </Typography>
+                        <Typography sx={{ fontSize: 18, fontWeight: 700, color: "primary.main" }}>
+                          {formatPrice(s.priceCents)}
+                        </Typography>
+                      </Box>
                     </Box>
                   ))}
                 </Box>
@@ -600,8 +617,8 @@ export default async function BookingPage({
                       >
                         <Box
                           sx={{
-                            width: 64,
-                            height: 64,
+                            width: 88,
+                            height: 88,
                             borderRadius: "50%",
                             bgcolor: "secondary.main",
                             color: "primary.main",
@@ -613,12 +630,12 @@ export default async function BookingPage({
                             fontFamily: "var(--font-display)",
                             fontWeight: 700,
                             fontSize: 20,
-                            ...(p.photoUrl
-                              ? { backgroundImage: `url(${p.photoUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                            ...(photoOf(p)
+                              ? { backgroundImage: `url(${photoOf(p)})`, backgroundSize: "cover", backgroundPosition: "center" }
                               : {}),
                           }}
                         >
-                          {!p.photoUrl && p.name.charAt(0).toUpperCase()}
+                          {!photoOf(p) && p.name.charAt(0).toUpperCase()}
                         </Box>
                         <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#FAF7F2" }}>{p.name}</Typography>
                       </Box>

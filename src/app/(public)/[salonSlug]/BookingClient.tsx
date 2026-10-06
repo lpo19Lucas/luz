@@ -25,8 +25,8 @@ import {
   addSavedAppointmentToken,
 } from "@/lib/clientStorage";
 
-type Professional = { id: string; name: string; serviceIds: string[] };
-type Service = { id: string; name: string; durationMinutes: number; priceCents: number };
+type Professional = { id: string; name: string; photoUrl: string | null; serviceIds: string[] };
+type Service = { id: string; name: string; durationMinutes: number; priceCents: number; imageUrl: string | null };
 type SalonInfo = { name: string; professionals: Professional[]; services: Service[] };
 
 type MyAppointment = {
@@ -306,7 +306,11 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                     "&:hover": { transform: "translateY(-2px)" },
                   }}
                 >
-                  <Avatar sx={{ mx: "auto", mb: 0.5, bgcolor: "primary.main", fontWeight: 700 }}>
+                  <Avatar
+                    src={p.photoUrl ?? undefined}
+                    alt={p.name}
+                    sx={{ mx: "auto", mb: 0.5, width: 52, height: 52, bgcolor: "primary.main", fontWeight: 700 }}
+                  >
                     {p.name.charAt(0).toUpperCase()}
                   </Avatar>
                   <Typography variant="caption" sx={{ fontWeight: selected ? 700 : 500 }}>
@@ -341,13 +345,18 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                     "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(27,42,74,.08)" },
                   }}
                 >
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {s.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {s.durationMinutes} min
-                    </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                    {s.imageUrl && (
+                      <Avatar variant="rounded" src={s.imageUrl} alt={s.name} sx={{ width: 48, height: 48, borderRadius: 2 }} />
+                    )}
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {s.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {s.durationMinutes} min
+                      </Typography>
+                    </Box>
                   </Box>
                   <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
                     {formatPrice(s.priceCents)}

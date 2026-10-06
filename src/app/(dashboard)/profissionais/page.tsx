@@ -6,6 +6,8 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { createProfessionalAction, deleteProfessionalAction } from "@/lib/actions/professional";
 import { AvailabilityFields } from "./AvailabilityFields";
+import ImageUploadField from "../ImageUploadField";
+import { storedImageUrl } from "@/lib/storedImages";
 
 export default async function ProfissionaisPage() {
   const salon = await getCurrentSalon();
@@ -38,7 +40,7 @@ export default async function ProfissionaisPage() {
             spacing={2}
             sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
           >
-            <Avatar sx={{ bgcolor: "primary.main", width: 36, height: 36, fontSize: 14 }}>
+            <Avatar src={storedImageUrl(prof.photoImageId) ?? undefined} alt={prof.name} sx={{ bgcolor: "primary.main", width: 40, height: 40, fontSize: 14 }}>
               {prof.name.charAt(0).toUpperCase()}
             </Avatar>
             <Box sx={{ flexGrow: 1 }}>
@@ -70,6 +72,7 @@ export default async function ProfissionaisPage() {
           Novo profissional
         </Typography>
         <Stack component="form" action={createProfessionalAction} spacing={2}>
+          <ImageUploadField label="Foto (opcional)" />
           <TextField name="name" label="Nome" size="small" fullWidth required />
           <TextField
             name="commissionPercent"

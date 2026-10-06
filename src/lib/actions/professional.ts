@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { WEEKDAYS } from "@/lib/weekdays";
+import { readImageField, setEntityImage, deleteStoredImage } from "@/lib/storedImages";
 
 function parseAvailabilityFromForm(formData: FormData) {
   const rows: { weekday: number; startTime: string; endTime: string }[] = [];
@@ -48,7 +49,7 @@ export async function createProfessionalAction(formData: FormData) {
   const availability = parseAvailabilityFromForm(formData);
   const serviceIds = parseServiceIdsFromForm(formData);
 
-  await prisma.professional.create({
+  const created = await prisma.professional.create({
     data: {
       salonId: salon.id,
       name,
@@ -57,6 +58,8 @@ export async function createProfessionalAction(formData: FormData) {
       services: { create: serviceIds.map((serviceId) => ({ serviceId })) },
     },
   });
+  const image = readImageField(formData);
+  if (image) await setEntityImage(salon.id, { kind: "professional", id: created.id }, image);
   revalidatePath("/profissionais");
 }
 
@@ -91,7 +94,11 @@ export async function updateProfessionalAction(formData: FormData) {
     }),
   ]);
 
+  const image = readImageField(formData);
+  if (image !== undefined) await setEntityImage(salon.id, { kind: "professional", id }, image);
+
   revalidatePath("/profissionais");
+  revalidatePath(`/${salon.slug}`);
   redirect("/profissionais");
 }
 
@@ -111,6 +118,7 @@ export async function deleteProfessionalAction(formData: FormData) {
 
   try {
     await prisma.professional.delete({ where: { id } });
+    await deleteStoredImage(salon.id, professional.photoImageId);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
       await prisma.professional.update({ where: { id }, data: { active: false } });
