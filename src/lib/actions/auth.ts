@@ -7,6 +7,9 @@ import { createSession, destroySession, hashPassword, verifyPassword } from "@/l
 import { provisionSalon, ProvisionError } from "@/lib/salonProvisioning";
 import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
+import { getCurrentSalon } from "@/lib/currentSalon";
+import { acceptCurrentTerms } from "@/lib/termsAcceptance";
+import { revalidatePath } from "next/cache";
 
 export type FormState = { error: string } | undefined;
 
@@ -81,4 +84,11 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+/** Aviso do painel pra contas antigas/convites: aceitar a versão atual dos termos. */
+export async function acceptTermsAction() {
+  const salon = await getCurrentSalon();
+  await acceptCurrentTerms(salon.ownerId);
+  revalidatePath("/", "layout");
 }

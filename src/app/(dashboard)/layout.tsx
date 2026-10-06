@@ -1,7 +1,8 @@
 import { Button, Alert } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
-import { logoutAction } from "@/lib/actions/auth";
+import { logoutAction, acceptTermsAction } from "@/lib/actions/auth";
+import { needsTermsAcceptance } from "@/lib/termsAcceptance";
 import { whatsappLink } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
@@ -29,9 +30,28 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supportPhone = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
   const subscription = await prisma.subscription.findUnique({ where: { salonId: salon.id } });
   const access = getSubscriptionAccess(subscription);
+  const owner = await prisma.user.findUniqueOrThrow({ where: { id: salon.ownerId }, select: { termsVersion: true } });
 
   const banners = (
     <>
+      {needsTermsAcceptance(owner) && (
+        <Alert
+          severity="info"
+          sx={{ mb: 2, borderRadius: 2 }}
+          action={
+            <form action={acceptTermsAction}>
+              <Button type="submit" color="inherit" size="small">
+                Li e aceito
+              </Button>
+            </form>
+          }
+        >
+          Publicamos os <Link href="/termos" target="_blank">Termos de Uso</Link>, a{" "}
+          <Link href="/privacidade" target="_blank">Política de Privacidade</Link> e o{" "}
+          <Link href="/contrato" target="_blank">Contrato de Licença</Link> da Luz. Leia e confirme o aceite
+          para continuar usando a plataforma.
+        </Alert>
+      )}
       {access === "GRACE" && (
         <Alert
           severity="warning"

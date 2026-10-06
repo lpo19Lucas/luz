@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { updateSalonSettings, updatePresenceConfirmationConfig } from "@/lib/actions/salon";
 import { isAiDescriptionAvailable } from "@/lib/aiDescription";
 import SalonProfileForm from "./SalonProfileForm";
+import ChangePasswordForm from "./ChangePasswordForm";
 
 export default async function ConfiguracoesPage() {
   const salon = await getCurrentSalon();
@@ -104,6 +105,8 @@ export default async function ConfiguracoesPage() {
           </Button>
         </Stack>
       </Paper>
+
+      <ChangePasswordForm />
     </Box>
   );
 }

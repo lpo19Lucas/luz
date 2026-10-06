@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState } from "react";
-import { Box, Paper, TextField, Button, Typography, Alert, Stack, Divider, FormControlLabel, Checkbox } from "@mui/material";
+import { Box, Paper, TextField, Button, Typography, Alert, Stack, Divider } from "@mui/material";
 import Link from "next/link";
 import { signupAction } from "@/lib/actions/auth";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
+import TermsCheckbox from "../TermsCheckbox";
 
 export default function CadastroPage() {
   const [state, formAction, pending] = useActionState(signupAction, undefined);
@@ -42,27 +43,7 @@ export default function CadastroPage() {
             helperText={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
             inputProps={{ minLength: MIN_PASSWORD_LENGTH }}
           />
-          <FormControlLabel
-            sx={{ alignItems: "flex-start", mr: 0 }}
-            control={<Checkbox name="acceptTerms" required sx={{ pt: 0.25 }} />}
-            label={
-              <Typography variant="body2" color="text.secondary">
-                Li e aceito os{" "}
-                <Link href="/termos" target="_blank" style={{ color: "inherit", fontWeight: 600 }}>
-                  Termos de Uso
-                </Link>
-                , a{" "}
-                <Link href="/privacidade" target="_blank" style={{ color: "inherit", fontWeight: 600 }}>
-                  Política de Privacidade
-                </Link>{" "}
-                e o{" "}
-                <Link href="/contrato" target="_blank" style={{ color: "inherit", fontWeight: 600 }}>
-                  Contrato de Licença
-                </Link>
-                .
-              </Typography>
-            }
-          />
+          <TermsCheckbox />
           {state?.error && <Alert severity="error">{state.error}</Alert>}
           <Button type="submit" variant="contained" disabled={pending}>
             {pending ? "Criando..." : "Criar minha conta"}
