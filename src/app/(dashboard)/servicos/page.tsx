@@ -1,9 +1,11 @@
 // CRUD de serviços (spec P0.4).
-import { Box, Typography, Paper, Stack, TextField, Button } from "@mui/material";
+import { Box, Typography, Paper, Stack, TextField, Button, Avatar } from "@mui/material";
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { createServiceAction, deleteServiceAction } from "@/lib/actions/service";
+import ImageUploadField from "../ImageUploadField";
+import { storedImageUrl } from "@/lib/storedImages";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,6 +39,14 @@ export default async function ServicosPage() {
             spacing={1.5}
             sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
           >
+            <Avatar
+              variant="rounded"
+              src={storedImageUrl(svc.imageId) ?? undefined}
+              alt={svc.name}
+              sx={{ width: 44, height: 44, bgcolor: "grey.200", color: "text.secondary", fontSize: 18 }}
+            >
+              💇
+            </Avatar>
             <Box sx={{ flexGrow: 1 }}>
               <Typography sx={{ fontWeight: 500 }}>{svc.name}</Typography>
               <Typography variant="caption" color="text.secondary">
@@ -74,6 +84,7 @@ export default async function ServicosPage() {
           Novo serviço
         </Typography>
         <Stack component="form" action={createServiceAction} spacing={1.5}>
+          <ImageUploadField label="Foto (opcional)" shape="rounded" />
           <TextField name="name" label="Nome" size="small" required />
           <Stack direction="row" spacing={1.5}>
             <TextField name="durationMinutes" label="Duração (min)" type="number" size="small" required />

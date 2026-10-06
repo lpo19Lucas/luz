@@ -26,9 +26,49 @@ model User {
   phone        String?
   createdAt    DateTime @default(now())
 
-  salons Salon[]
+  // Painel admin: bloqueio de acesso do dono (login recusado e sessões
+  // existentes derrubadas — ver getCurrentSalon).
+  disabledAt         DateTime?
+  // Troca/redefinição de senha: sessões emitidas antes disso deixam de valer
+  // (o JWT carrega `iat`; ver getCurrentSalon).
+  passwordChangedAt  DateTime?
+  // Aceite dos Termos de Uso + Política de Privacidade (LGPD) — registrado no
+  // cadastro ou no convite do cadastro facilitado. A versão vem de
+  // src/lib/legal.ts (LEGAL_VERSION) e muda quando o texto mudar.
+  termsAcceptedAt    DateTime?
+  termsVersion       String?
+  // Tipos de notificação que a pessoa desligou (Configurações/Minha conta).
+  mutedNotifications NotificationType[] @default([])
+
+  salons              Salon[]
+  passwordResetTokens PasswordResetToken[]
+  pushSubscriptions   PushSubscription[]
+  professionalLinks   Professional[]
 
   @@map("users")
+}
+
+// Recuperação de acesso: link de uso único enviado por e-mail ("esqueci minha
+// senha") ou gerado pelo painel admin (redefinir / convite do cadastro
+// facilitado). Só o hash SHA-256 do token fica no banco — o token em claro
+// existe apenas no link.
+enum PasswordTokenPurpose {
+  RESET // esqueci minha senha / admin gerou link de redefinição
+  INVITE // cadastro facilitado pelo admin — dono define a primeira senha
+}
+
+model PasswordResetToken {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String               @unique
+  purpose   PasswordTokenPurpose @default(RESET)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime             @default(now())
+
+  @@index([userId, createdAt])
+  @@map("password_reset_tokens")
 }
 
 // ------------------------------------------------------------
@@ -46,18 +86,18 @@ model Salon {
 
   // Chave/QR PIX do próprio salão — usada para o cliente pagar o serviço (opcional).
   // Ver spec seção 8.8: sem gateway, sem confirmação automática.
-  pixKey      String?
+  pixKey       String?
   pixQrCodeUrl String?
 
   // Perfil público do salão (F3) — tudo opcional. Aparece no link de
   // agendamento e alimenta o SEO/JSON-LD (F15).
-  coverImageData      String?   // data URL (JPEG redimensionado no navegador) — servido por /api/salons/:slug/cover
+  coverImageData      String? // data URL (JPEG redimensionado no navegador) — servido por /api/salons/:slug/cover
   coverImageUpdatedAt DateTime? // cache-busting da capa
-  primaryColor        String?   // "#RRGGBB" — cor principal da página pública
-  accentColor         String?   // "#RRGGBB" — cor de destaque
-  description         String?   // "sobre o salão" (pode ser gerado com IA e editado pelo dono)
-  faqJson             Json?     // [{ q, a }] — FAQ público do salão (JSON-LD FAQPage)
-  whatsappPhone       String?   // só dígitos, com DDD
+  primaryColor        String? // "#RRGGBB" — cor principal da página pública
+  accentColor         String? // "#RRGGBB" — cor de destaque
+  description         String? // "sobre o salão" (pode ser gerado com IA e editado pelo dono)
+  faqJson             Json? // [{ q, a }] — FAQ público do salão (JSON-LD FAQPage)
+  whatsappPhone       String? // só dígitos, com DDD
   email               String?
   cnpj                String?
   instagramUrl        String?
@@ -76,18 +116,21 @@ model Salon {
   // conclui o mínimo (serviço + profissional com horário) e publica.
   publishedAt DateTime?
 
-  professionals Professional[]
-  services      Service[]
-  clients       Client[]
-  appointments  Appointment[]
-  agendaBlocks  AgendaBlock[]
-  events        AppointmentEvent[]
-  products      Product[]
-  reservations  ProductReservation[]
-  messageTemplates MessageTemplate[]
+  professionals      Professional[]
+  services           Service[]
+  clients            Client[]
+  appointments       Appointment[]
+  agendaBlocks       AgendaBlock[]
+  events             AppointmentEvent[]
+  products           Product[]
+  reservations       ProductReservation[]
+  messageTemplates   MessageTemplate[]
   packageDefinitions PackageDefinition[]
   clientPackages     ClientPackage[]
   reviews            Review[]
+  images             StoredImage[]
+  pushSubscriptions  PushSubscription[]
+  notificationLogs   NotificationLog[]
 
   subscription            Subscription?
   presenceConfirmationCfg PresenceConfirmationConfig?
@@ -109,20 +152,31 @@ model Professional {
   salon    Salon                @relation(fields: [salonId], references: [id], onDelete: Cascade)
   name     String
   category ProfessionalCategory @default(BARBER)
-  photoUrl String?
+  photoUrl String? // legado (URL externa) — a foto enviada pelo dono fica em photoImageId
   active   Boolean              @default(true)
+
+  // Foto enviada pelo dono (StoredImage) — servida por /api/images/:id.
+  photoImageId String?
+
+  // Acesso do profissional (Fase P): conta própria convidada pelo dono, que
+  // vê só a própria agenda e recebe as próprias notificações. Null = sem
+  // acesso (só o dono gerencia). Uma pessoa pode atender em mais de um salão.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  phone  String? // WhatsApp do profissional — pra enviar o convite
 
   // Comissão (feature "Comissão por profissional"): % individual sobre o
   // preço do serviço nos atendimentos COMPLETED. Sem valor padrão de salão —
   // cada profissional precisa da própria config (decisão do Lucas).
   commissionPercent Float?
 
-  services      ServiceProfessional[]
-  availability  Availability[]
-  exceptions    AvailabilityException[]
-  appointments  Appointment[]
-  agendaBlocks  AgendaBlock[]
+  services     ServiceProfessional[]
+  availability Availability[]
+  exceptions   AvailabilityException[]
+  appointments Appointment[]
+  agendaBlocks AgendaBlock[]
 
+  @@unique([salonId, userId])
   @@index([salonId])
   @@map("professionals")
 }
@@ -132,9 +186,9 @@ model Availability {
   id             String       @id @default(cuid())
   professionalId String
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  weekday        Int          // 0 = domingo ... 6 = sábado
-  startTime      String       // "09:00" — armazenado como texto simples (HH:mm), suficiente pro MVP
-  endTime        String       // "19:00"
+  weekday        Int // 0 = domingo ... 6 = sábado
+  startTime      String // "09:00" — armazenado como texto simples (HH:mm), suficiente pro MVP
+  endTime        String // "19:00"
 
   @@index([professionalId])
   @@map("availabilities")
@@ -147,7 +201,7 @@ model AvailabilityException {
   professionalId String
   professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   date           DateTime     @db.Date
-  startTime      String?      // null = bloqueia o dia inteiro
+  startTime      String? // null = bloqueia o dia inteiro
   endTime        String?
   reason         String?
 
@@ -158,8 +212,8 @@ model AvailabilityException {
 // Bloqueio de agenda (F4): pontual ou recorrente, de um profissional ou do
 // salão inteiro (professionalId null = feriado/fechamento geral).
 enum AgendaBlockRecurrence {
-  ONCE   // só no dia `date`
-  DAILY  // todo dia (dentro de startsOn..endsOn, se definidos)
+  ONCE // só no dia `date`
+  DAILY // todo dia (dentro de startsOn..endsOn, se definidos)
   WEEKLY // toda semana no `weekday`
 }
 
@@ -171,10 +225,10 @@ model AgendaBlock {
   professional   Professional?         @relation(fields: [professionalId], references: [id], onDelete: Cascade)
   recurrence     AgendaBlockRecurrence @default(ONCE)
   date           DateTime?             @db.Date // ONCE
-  weekday        Int?                  // WEEKLY: 0 = domingo ... 6 = sábado
+  weekday        Int? // WEEKLY: 0 = domingo ... 6 = sábado
   startsOn       DateTime?             @db.Date // recorrentes: a partir de (opcional)
   endsOn         DateTime?             @db.Date // recorrentes: até (opcional)
-  startTime      String?               // "12:00" — null = dia inteiro
+  startTime      String? // "12:00" — null = dia inteiro
   endTime        String?
   reason         String?
   createdAt      DateTime              @default(now())
@@ -189,15 +243,18 @@ model AgendaBlock {
 // ------------------------------------------------------------
 
 model Service {
-  id              String  @id @default(cuid())
+  id              String @id @default(cuid())
   salonId         String
-  salon           Salon   @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  salon           Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
   name            String
   durationMinutes Int
   priceCents      Int
 
-  professionals ServiceProfessional[]
-  appointments  Appointment[]
+  // Foto do serviço enviada pelo dono (StoredImage) — servida por /api/images/:id.
+  imageId String?
+
+  professionals      ServiceProfessional[]
+  appointments       Appointment[]
   packageDefinitions PackageDefinition[]
 
   @@index([salonId])
@@ -232,10 +289,11 @@ model Client {
   banReason String?
   notes     String? // anotações do dono sobre o cliente
 
-  appointments Appointment[]
-  reservations ProductReservation[]
-  packages     ClientPackage[]
-  reviews      Review[]
+  appointments      Appointment[]
+  reservations      ProductReservation[]
+  packages          ClientPackage[]
+  reviews           Review[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([salonId, phone]) // mesmo telefone = mesmo cliente dentro do salão
   @@map("clients")
@@ -251,7 +309,7 @@ enum AppointmentStatus {
   CANCELLED
   COMPLETED
   NO_SHOW // cliente não compareceu — marcado pelo dono na agenda (não confundir
-          // com o alerta automático de "não confirmou presença", que é `noShowHandledAt`)
+  // com o alerta automático de "não confirmou presença", que é `noShowHandledAt`)
 }
 
 model Appointment {
@@ -299,9 +357,9 @@ model Appointment {
 
   createdAt DateTime @default(now())
 
-  whatsappJobs WhatsAppMessageJob[]
-  events       AppointmentEvent[]
-  reservations ProductReservation[]
+  whatsappJobs       WhatsAppMessageJob[]
+  events             AppointmentEvent[]
+  reservations       ProductReservation[]
   packageConsumption PackageConsumption?
   review             Review?
 
@@ -314,7 +372,7 @@ model Appointment {
 
 enum AppointmentSource {
   ONLINE // cliente pelo link público
-  OWNER  // dono/recepção pelo dashboard
+  OWNER // dono/recepção pelo dashboard
 }
 
 // Histórico de eventos do agendamento (F5) — base da lista de
@@ -333,6 +391,7 @@ enum AppointmentEventActor {
   CLIENT
   OWNER
   SYSTEM
+  PROFESSIONAL // profissional com acesso próprio (Fase P)
 }
 
 model AppointmentEvent {
@@ -343,8 +402,8 @@ model AppointmentEvent {
   appointment     Appointment           @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   type            AppointmentEventType
   actor           AppointmentEventActor
-  previousStartAt DateTime?             // RESCHEDULED
-  newStartAt      DateTime?             // RESCHEDULED
+  previousStartAt DateTime? // RESCHEDULED
+  newStartAt      DateTime? // RESCHEDULED
   note            String?
   createdAt       DateTime              @default(now())
 
@@ -368,7 +427,7 @@ model PresenceConfirmationConfig {
   salon   Salon  @relation(fields: [salonId], references: [id], onDelete: Cascade)
 
   enabled           Boolean         @default(true) // default resolvido na spec: habilitado
-  hoursBefore       Int             @default(24)   // default resolvido na spec: 24h antes
+  hoursBefore       Int             @default(24) // default resolvido na spec: 24h antes
   actionOnNoConfirm NoConfirmAction @default(ALERT_ONLY) // default: só alerta, não libera
 
   @@map("presence_confirmation_configs")
@@ -468,17 +527,17 @@ model MessageTemplate {
 // ------------------------------------------------------------
 
 model Product {
-  id               String    @id @default(cuid())
-  salonId          String
-  salon            Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
-  name             String
-  description      String?
-  priceCents       Int
-  imageData        String?   // data URL — servido por /api/products/:id/image
-  imageUpdatedAt   DateTime?
-  stock            Int?      // null = não controla estoque
-  active           Boolean   @default(true)
-  createdAt        DateTime  @default(now())
+  id             String    @id @default(cuid())
+  salonId        String
+  salon          Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  priceCents     Int
+  imageData      String? // data URL — servido por /api/products/:id/image
+  imageUpdatedAt DateTime?
+  stock          Int? // null = não controla estoque
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
 
   reservations ProductReservation[]
 
@@ -487,25 +546,25 @@ model Product {
 }
 
 enum ProductReservationStatus {
-  PENDING   // cliente reservou, ainda não retirou
+  PENDING // cliente reservou, ainda não retirou
   DELIVERED // entregue/vendido no salão
   CANCELLED
 }
 
 model ProductReservation {
-  id            String                   @id @default(cuid())
-  salonId       String
-  salon         Salon                    @relation(fields: [salonId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  clientId      String
-  client        Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  appointmentId String?
-  appointment   Appointment?             @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-  quantity      Int                      @default(1)
-  unitPriceCents Int                     // preço no momento da reserva
-  status        ProductReservationStatus @default(PENDING)
-  createdAt     DateTime                 @default(now())
+  id             String                   @id @default(cuid())
+  salonId        String
+  salon          Salon                    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product                  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointmentId  String?
+  appointment    Appointment?             @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  quantity       Int                      @default(1)
+  unitPriceCents Int // preço no momento da reserva
+  status         ProductReservationStatus @default(PENDING)
+  createdAt      DateTime                 @default(now())
 
   @@index([salonId, status])
   @@map("product_reservations")
@@ -520,7 +579,7 @@ model ProductReservation {
 
 enum PackageType {
   SERVICE_CREDITS // N créditos de uso de 1 serviço específico
-  CASH_CREDIT     // saldo em R$ que abate do preço de qualquer serviço
+  CASH_CREDIT // saldo em R$ que abate do preço de qualquer serviço
 }
 
 model PackageDefinition {
@@ -529,12 +588,12 @@ model PackageDefinition {
   salon        Salon       @relation(fields: [salonId], references: [id], onDelete: Cascade)
   name         String
   type         PackageType
-  serviceId    String?     // obrigatório quando type = SERVICE_CREDITS
+  serviceId    String? // obrigatório quando type = SERVICE_CREDITS
   service      Service?    @relation(fields: [serviceId], references: [id])
-  credits      Int?        // obrigatório quando type = SERVICE_CREDITS
-  valueCents   Int?        // obrigatório quando type = CASH_CREDIT
-  priceCents   Int         // preço de venda do pacote
-  validityDays Int         // validade em dias, contada a partir da ativação
+  credits      Int? // obrigatório quando type = SERVICE_CREDITS
+  valueCents   Int? // obrigatório quando type = CASH_CREDIT
+  priceCents   Int // preço de venda do pacote
+  validityDays Int // validade em dias, contada a partir da ativação
   active       Boolean     @default(true) // dono tira da vitrine/venda sem apagar o histórico
   createdAt    DateTime    @default(now())
 
@@ -559,10 +618,10 @@ model ClientPackage {
   packageDefinitionId String
   packageDefinition   PackageDefinition   @relation(fields: [packageDefinitionId], references: [id])
   status              ClientPackageStatus @default(PENDING_PAYMENT)
-  remainingCredits    Int?                // snapshot mutável, só pra SERVICE_CREDITS
-  remainingValueCents Int?                // snapshot mutável, só pra CASH_CREDIT
-  activatedAt         DateTime?           // quando virou ACTIVE (venda manual = na hora; reserva pública = na confirmação do dono)
-  expiresAt           DateTime?           // activatedAt + validityDays — "expirado" é derivado (expiresAt < agora), não um status à parte
+  remainingCredits    Int? // snapshot mutável, só pra SERVICE_CREDITS
+  remainingValueCents Int? // snapshot mutável, só pra CASH_CREDIT
+  activatedAt         DateTime? // quando virou ACTIVE (venda manual = na hora; reserva pública = na confirmação do dono)
+  expiresAt           DateTime? // activatedAt + validityDays — "expirado" é derivado (expiresAt < agora), não um status à parte
   createdAt           DateTime            @default(now())
 
   consumptions PackageConsumption[]
@@ -598,11 +657,138 @@ model Review {
   appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   clientId      String
   client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  rating        Int         // 1 a 5
+  rating        Int // 1 a 5
   comment       String?
   hiddenByOwner Boolean     @default(false) // dono oculta da vitrine pública sem apagar
   createdAt     DateTime    @default(now())
 
   @@index([salonId, createdAt])
   @@map("reviews")
+}
+
+// ------------------------------------------------------------
+// Imagens enviadas pelo dono (foto de profissional, de serviço). Ficam numa
+// tabela própria em vez de uma coluna data URL em Professional/Service pra
+// que as listagens (agenda, página pública, API de agendamento) não carreguem
+// os bytes junto. Imutáveis: trocar a foto cria um registro novo (id novo =
+// URL nova), então a rota que serve a imagem pode usar cache "immutable".
+// ------------------------------------------------------------
+
+model StoredImage {
+  id          String   @id @default(cuid())
+  salonId     String
+  salon       Salon    @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  contentType String
+  data        Bytes
+  createdAt   DateTime @default(now())
+
+  @@index([salonId])
+  @@map("stored_images")
+}
+
+// ------------------------------------------------------------
+// Planos da plataforma — editáveis pelo painel admin (/admin/planos) em vez
+// de fixos no código (src/lib/plans.ts guarda só o fallback). Uma linha por
+// valor do enum SubscriptionPlan; a linha TRIAL guarda a duração do teste.
+// ------------------------------------------------------------
+
+model PlatformPlan {
+  plan         SubscriptionPlan @id
+  label        String
+  priceCents   Int // valor cobrado por período (0 no TRIAL)
+  durationDays Int // duração do período; no TRIAL = dias de teste grátis
+  description  String? // texto curto embaixo do preço (vazio = gerado automaticamente)
+  active       Boolean          @default(true) // aparece pro dono escolher e na landing
+  sortOrder    Int              @default(0)
+  updatedAt    DateTime         @updatedAt
+
+  @@map("platform_plans")
+}
+
+// ------------------------------------------------------------
+// Tentativas de autenticação — limite contra força bruta no login do dono e
+// do /admin. Fica no banco (não em memória) porque na Vercel cada request
+// pode cair numa instância diferente. Ver src/lib/rateLimit.ts.
+// ------------------------------------------------------------
+
+model AuthAttempt {
+  id        String   @id @default(cuid())
+  key       String // ex.: "login:dono@x.com", "admin:1.2.3.4"
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@map("auth_attempts")
+}
+
+// ------------------------------------------------------------
+// Notificações push do PWA (Fase E). Uma linha por aparelho/navegador
+// inscrito. Do dono/profissional (userId) ou do cliente (clientId, que se
+// inscreve pelo link do agendamento). Inscrição que o serviço de push
+// responde 404/410 (aparelho desinstalou/revogou) é apagada no envio.
+// ------------------------------------------------------------
+
+model PushSubscription {
+  id            String    @id @default(cuid())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userAgent     String?
+  failureCount  Int       @default(0)
+  lastSuccessAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([salonId])
+  @@index([userId])
+  @@index([clientId])
+  @@map("push_subscriptions")
+}
+
+enum NotificationType {
+  TEST
+  // Dono/profissional — na hora do evento
+  BOOKING_CREATED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+  PRESENCE_CONFIRMED
+  PACKAGE_RESERVED
+  REVIEW_RECEIVED
+  // Dono/profissional — cron das 7h
+  DAILY_AGENDA
+  // Cliente
+  CLIENT_BOOKING_CONFIRMED
+  CLIENT_REMINDER_TODAY
+  CLIENT_PRESENCE_CHECK
+  CLIENT_REVIEW_REQUEST
+}
+
+enum NotificationStatus {
+  SENT // entregue a pelo menos um aparelho
+  FAILED // tinha aparelho, nenhum aceitou
+  NO_SUBSCRIPTION // destinatário sem aparelho inscrito
+}
+
+// Registro de cada notificação (destinatário x tipo). `dedupeKey` único
+// impede reenvio quando o cron roda duas vezes no mesmo dia; também alimenta
+// as métricas de entrega no admin.
+model NotificationLog {
+  id            String             @id @default(cuid())
+  salonId       String
+  salon         Salon              @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  type          NotificationType
+  recipient     String // "user:<id>" ou "client:<id>"
+  status        NotificationStatus
+  devices       Int                @default(0) // aparelhos que receberam
+  dedupeKey     String?            @unique
+  createdAt     DateTime           @default(now())
+
+  @@index([salonId, createdAt])
+  @@map("notification_logs")
 }

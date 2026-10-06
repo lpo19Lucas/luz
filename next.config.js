@@ -6,6 +6,19 @@ const nextConfig = {
     // Next pra uma imagem JPEG de até 1280px.
     serverActions: { bodySizeLimit: "3mb" },
   },
+  // PWA: o navegador precisa sempre buscar o service worker novo (senão uma
+  // correção no sw.js demora até 24h pra chegar nos aparelhos).
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

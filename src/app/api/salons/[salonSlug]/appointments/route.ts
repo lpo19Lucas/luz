@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppointment } from "@/lib/booking";
 import { bookingErrorResponse } from "@/lib/bookingErrors";
+import { getCalendarLinksForAppointment } from "@/lib/appointmentCalendar";
 
 /**
  * POST /api/salons/:salonSlug/appointments
@@ -47,6 +48,8 @@ export async function POST(
         id: appointment.id,
         accessToken: appointment.accessToken,
         manageUrl: `/${salonSlug}/agendamento/${appointment.accessToken}`,
+        // "Adicionar à agenda" na tela de sucesso (Google + .ics).
+        calendar: await getCalendarLinksForAppointment(appointment.id),
       },
       { status: 201 }
     );

@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient, PackageType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { dispatchInBackground, notifyOwnerAboutPackageReservation } from "@/lib/staffNotifications";
 import { normalizePhone } from "@/lib/phone";
 
 type Db = PrismaClient | Prisma.TransactionClient;
@@ -91,7 +92,7 @@ export async function reservePackagePublic(params: {
     create: { salonId: salon.id, name: params.clientName, phone },
   });
 
-  return prisma.clientPackage.create({
+  const reservation = await prisma.clientPackage.create({
     data: {
       salonId: salon.id,
       clientId: client.id,
@@ -99,6 +100,8 @@ export async function reservePackagePublic(params: {
       status: "PENDING_PAYMENT",
     },
   });
+  dispatchInBackground(() => notifyOwnerAboutPackageReservation(reservation.id));
+  return reservation;
 }
 
 /** Dono confirma o pagamento de uma reserva pública — a validade começa a contar agora. */

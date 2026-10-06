@@ -4,10 +4,18 @@ import { prisma } from "@/lib/prisma";
  * Limpa todas as tabelas do banco de teste entre casos. TRUNCATE (não DELETE)
  * porque é mais rápido e reseta sequências — não tem problema de performance
  * aqui porque o banco de teste é sempre pequeno.
+ *
+ * `platform_plans` fica de fora de propósito: é configuração semeada pela
+ * migration (não dado de teste). Teste que mexe nela restaura os valores.
  */
 export async function resetDb() {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "auth_attempts",
+      "notification_logs",
+      "push_subscriptions",
+      "password_reset_tokens",
+      "stored_images",
       "whatsapp_message_jobs",
       "appointment_events",
       "product_reservations",
@@ -122,4 +130,12 @@ export function futureSlotTime(hoursFromNow: number) {
   const d = new Date(Date.now() + hoursFromNow * 60 * 60_000);
   d.setUTCMinutes(Math.ceil(d.getUTCMinutes() / 20) * 20, 0, 0);
   return d;
+}
+
+/** Volta `platform_plans` aos valores semeados pela migration. */
+export async function restoreDefaultPlans() {
+  const { DEFAULT_PLATFORM_PLANS } = await import("@/lib/plans");
+  for (const p of DEFAULT_PLATFORM_PLANS) {
+    await prisma.platformPlan.upsert({ where: { plan: p.plan }, create: p, update: p });
+  }
 }

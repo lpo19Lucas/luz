@@ -10,3 +10,8 @@ if (!process.env.TEST_DATABASE_URL) {
 }
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+
+// Notificações em segundo plano (after()) não rodam nos testes: uma tarefa
+// solta corre contra o TRUNCATE entre casos. Os testes de notificação chamam
+// as funções diretamente. Ver dispatchInBackground em staffNotifications.ts.
+process.env.DISABLE_BACKGROUND_NOTIFICATIONS = "1";

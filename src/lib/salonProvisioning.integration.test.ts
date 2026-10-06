@@ -1,0 +1,114 @@
+/**
+ * Teste de integração — Postgres real (`postgres_test`).
+ *
+ * Cobre provisionSalon: cadastro self-service e cadastro facilitado do admin
+ * criam conta + salão + assinatura + config numa transação, com o aceite dos
+ * termos registrado e a duração do teste vinda de platform_plans.
+ */
+import { prisma } from "@/lib/prisma";
+import { resetDb, restoreDefaultPlans } from "@tests/integration/helpers";
+import { provisionSalon, ProvisionError, SERVICE_TEMPLATES } from "@/lib/salonProvisioning";
+import { LEGAL_VERSION } from "@/lib/legal";
+import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+
+const DAY = 24 * 60 * 60_000;
+const base = { ownerName: "Ana Dona", email: "Ana@Teste.com", passwordHash: "hash", salonName: "Studio Ana" };
+
+beforeEach(async () => {
+  await resetDb();
+  await restoreDefaultPlans();
+});
+
+afterAll(async () => {
+  await restoreDefaultPlans();
+  await prisma.$disconnect();
+});
+
+describe("provisionSalon", () => {
+  it("cria usuário, salão, assinatura TRIAL e config de presença, com aceite dos termos", async () => {
+    const now = new Date("2026-10-06T12:00:00Z");
+    const { user, salon } = await provisionSalon({ ...base, phone: "(11) 98888-7777", termsAccepted: true, now });
+
+    expect(user.email).toBe("ana@teste.com");
+    expect(user.phone).toBe("11988887777");
+    expect(user.termsAcceptedAt).toEqual(now);
+    expect(user.termsVersion).toBe(LEGAL_VERSION);
+    expect(salon.slug).toMatch(/^studio-ana/);
+
+    const sub = await prisma.subscription.findUniqueOrThrow({ where: { salonId: salon.id } });
+    expect(sub.plan).toBe("TRIAL");
+    expect(sub.status).toBe("TRIAL");
+    expect(sub.trialEndsAt.getTime()).toBe(now.getTime() + 50 * DAY);
+    expect(getSubscriptionAccess(sub, now)).toBe("OK");
+
+    const cfg = await prisma.presenceConfirmationConfig.findUnique({ where: { salonId: salon.id } });
+    expect(cfg?.enabled).toBe(true);
+  });
+
+  it("não registra aceite quando termsAccepted = false (convite do admin)", async () => {
+    const { user } = await provisionSalon({ ...base, termsAccepted: false });
+    expect(user.termsAcceptedAt).toBeNull();
+    expect(user.termsVersion).toBeNull();
+  });
+
+  it("usa a duração do teste configurada em platform_plans", async () => {
+    await prisma.platformPlan.update({ where: { plan: "TRIAL" }, data: { durationDays: 14 } });
+    const now = new Date();
+    const { salon } = await provisionSalon({ ...base, termsAccepted: true, now });
+    const sub = await prisma.subscription.findUniqueOrThrow({ where: { salonId: salon.id } });
+    expect(sub.trialEndsAt.getTime()).toBe(now.getTime() + 14 * DAY);
+  });
+
+  it("aceita trialDays explícito (admin dando mais dias no cadastro)", async () => {
+    const now = new Date();
+    const { salon } = await provisionSalon({ ...base, termsAccepted: false, trialDays: 90, now });
+    const sub = await prisma.subscription.findUniqueOrThrow({ where: { salonId: salon.id } });
+    expect(sub.trialEndsAt.getTime()).toBe(now.getTime() + 90 * DAY);
+  });
+
+  it("com plano pago já nasce ACTIVE, com período e registro de ativação", async () => {
+    const now = new Date();
+    const { salon } = await provisionSalon({ ...base, termsAccepted: false, plan: "QUARTERLY", activatedBy: "admin", now });
+    const sub = await prisma.subscription.findUniqueOrThrow({ where: { salonId: salon.id } });
+    expect(sub.status).toBe("ACTIVE");
+    expect(sub.plan).toBe("QUARTERLY");
+    expect(sub.currentPeriodEnd?.getTime()).toBe(now.getTime() + 90 * DAY);
+    expect(sub.activatedAt).toEqual(now);
+    expect(sub.activatedManuallyByEmail).toBe("admin");
+  });
+
+  it("cria os serviços do modelo escolhido", async () => {
+    const { salon } = await provisionSalon({ ...base, termsAccepted: true, serviceTemplate: "barbearia" });
+    const services = await prisma.service.findMany({ where: { salonId: salon.id } });
+    expect(services.map((s) => s.name).sort()).toEqual(SERVICE_TEMPLATES.barbearia.map((s) => s.name).sort());
+  });
+
+  it("recusa e-mail já cadastrado (sem diferenciar maiúsculas)", async () => {
+    await provisionSalon({ ...base, termsAccepted: true });
+    await expect(
+      provisionSalon({ ...base, email: "ANA@teste.com", salonName: "Outro", termsAccepted: true })
+    ).rejects.toMatchObject({ code: "EMAIL_TAKEN" });
+    expect(await prisma.salon.count()).toBe(1);
+  });
+
+  it("recusa campos obrigatórios vazios", async () => {
+    await expect(provisionSalon({ ...base, salonName: "  ", termsAccepted: true })).rejects.toBeInstanceOf(ProvisionError);
+    expect(await prisma.user.count()).toBe(0);
+  });
+
+  it("não deixa conta pela metade se algo falhar no meio da transação", async () => {
+    // Força falha no último insert: um modelo de serviço com preço nulo viola
+    // o NOT NULL de services.priceCents.
+    const templates = SERVICE_TEMPLATES as unknown as Record<string, unknown>;
+    const original = templates.salao;
+    templates.salao = [{ name: "Quebrado", durationMinutes: 30, priceCents: null }];
+    try {
+      await expect(provisionSalon({ ...base, termsAccepted: true, serviceTemplate: "salao" })).rejects.toThrow();
+    } finally {
+      templates.salao = original;
+    }
+    expect(await prisma.user.count()).toBe(0);
+    expect(await prisma.salon.count()).toBe(0);
+    expect(await prisma.subscription.count()).toBe(0);
+  });
+});

@@ -54,6 +54,11 @@ services:
       # Idem — protege /api/cron/whatsapp-jobs e a tela /admin.
       CRON_SECRET: "dev-cron-secret-troque-em-producao"
       ADMIN_PASSWORD: "dev-admin-troque-em-producao"
+      # Web Push (PWA) — par de chaves VAPID só de dev. Em produção gere outro
+      # (npx web-push generate-vapid-keys) e configure na Vercel.
+      VAPID_PUBLIC_KEY: "BNzkTKziNnmKzTrFexsICGdlPUTTzSgMWKWyFTDtFtnUOcmw8X7RvFLmyn0kH1BT-XIRrssiUYm5hxYY04lVVNw"
+      VAPID_PRIVATE_KEY: "m81wedZ-Yaha_HB3HeIpoXi9MfUlos_ac4uVOLWRNsk"
+      VAPID_SUBJECT: "mailto:dev@luz.local"
       # Bind mount + Docker Desktop no Windows não propaga eventos de arquivo
       # pro inotify do Linux de forma confiável — sem isso, o hot-reload do
       # Next.js às vezes simplesmente para de detectar mudanças (fica servindo
@@ -66,7 +71,10 @@ services:
       - .:/app
       - app_node_modules:/app/node_modules
       - app_next:/app/.next
-    command: sh -c "npx prisma generate && npx prisma migrate dev --name init && npm run dev"
+    # migrate deploy (não migrate dev): aplica as migrations existentes sem
+    # prompt — migrate dev é interativo e trava o container quando detecta
+    # divergência no banco.
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npm run dev"
 
 volumes:
   postgres_data:

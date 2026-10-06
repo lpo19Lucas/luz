@@ -1,9 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { createSession, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
-import { generateUniqueSalonSlug } from "@/lib/slug";
+import { provisionSalon, ProvisionError } from "@/lib/salonProvisioning";
+import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
+import { MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
+import { getCurrentMember } from "@/lib/currentSalon";
+import { acceptCurrentTerms } from "@/lib/termsAcceptance";
+import { revalidatePath } from "next/cache";
 
 export type FormState = { error: string } | undefined;
 
@@ -14,9 +20,23 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { error: "Preencha e-mail e senha." };
   }
 
+  // Duas chaves: por e-mail (ataque a uma conta) e por IP (um IP testando
+  // várias contas). Qualquer uma estourada bloqueia.
+  const ip = clientIpFromHeaders(await headers());
+  const keys = [`login:${email}`, `login-ip:${ip}`];
+  for (const key of keys) {
+    if (await isRateLimited(key)) return { error: RATE_LIMIT_MESSAGE };
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await verifyPassword(password, user.passwordHash))) {
+  const ok = Boolean(user && (await verifyPassword(password, user.passwordHash)));
+  await Promise.all(keys.map((key) => recordAuthAttempt(key, ok)));
+
+  if (!user || !ok) {
     return { error: "E-mail ou senha inválidos." };
+  }
+  if (user.disabledAt) {
+    return { error: "Esta conta está bloqueada. Fale com o suporte da Luz." };
   }
 
   await createSession(user.id);
@@ -28,43 +48,47 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const salonName = String(formData.get("salonName") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const acceptTerms = formData.get("acceptTerms") === "on";
 
   if (!name || !email || !password || !salonName) {
     return { error: "Preencha todos os campos." };
   }
-  if (password.length < 6) {
-    return { error: "A senha precisa ter pelo menos 6 caracteres." };
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` };
+  }
+  if (!acceptTerms) {
+    return { error: "Para criar a conta, aceite os Termos de Uso, a Política de Privacidade e o Contrato." };
   }
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return { error: "Já existe uma conta com esse e-mail." };
+  let userId: string;
+  try {
+    const { user } = await provisionSalon({
+      ownerName: name,
+      email,
+      phone,
+      passwordHash: await hashPassword(password),
+      salonName,
+      termsAccepted: true,
+    });
+    userId = user.id;
+  } catch (err) {
+    if (err instanceof ProvisionError) return { error: err.message };
+    throw err;
   }
 
-  const passwordHash = await hashPassword(password);
-  const slug = await generateUniqueSalonSlug(salonName);
-
-  const user = await prisma.user.create({ data: { name, email, passwordHash } });
-  const salon = await prisma.salon.create({ data: { name: salonName, slug, ownerId: user.id } });
-
-  await prisma.subscription.create({
-    data: {
-      salonId: salon.id,
-      plan: "TRIAL",
-      status: "TRIAL",
-      // Trial de 50 dias (decisão registrada em STATUS-DO-PROJETO.md).
-      trialEndsAt: new Date(Date.now() + 50 * 24 * 60 * 60_000),
-    },
-  });
-  await prisma.presenceConfirmationConfig.create({
-    data: { salonId: salon.id, enabled: true, hoursBefore: 24, actionOnNoConfirm: "ALERT_ONLY" },
-  });
-
-  await createSession(user.id);
+  await createSession(userId);
   redirect("/inicio");
 }
 
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+/** Aviso do painel pra contas antigas/convites: aceitar a versão atual dos termos. */
+export async function acceptTermsAction() {
+  const member = await getCurrentMember();
+  await acceptCurrentTerms(member.userId);
+  revalidatePath("/", "layout");
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentSalon } from "@/lib/currentSalon";
+import { readImageField, setEntityImage, deleteStoredImage } from "@/lib/storedImages";
 
 export async function createServiceAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
@@ -13,7 +14,7 @@ export async function createServiceAction(formData: FormData) {
   if (!name || !durationMinutes || Number.isNaN(priceReais)) return;
 
   const salon = await getCurrentSalon();
-  await prisma.service.create({
+  const created = await prisma.service.create({
     data: {
       salonId: salon.id,
       name,
@@ -21,6 +22,8 @@ export async function createServiceAction(formData: FormData) {
       priceCents: Math.round(priceReais * 100),
     },
   });
+  const image = readImageField(formData);
+  if (image) await setEntityImage(salon.id, { kind: "service", id: created.id }, image);
   revalidatePath("/servicos");
 }
 
@@ -39,7 +42,10 @@ export async function updateServiceAction(formData: FormData) {
     where: { id },
     data: { name, durationMinutes, priceCents: Math.round(priceReais * 100) },
   });
+  const image = readImageField(formData);
+  if (image !== undefined) await setEntityImage(salon.id, { kind: "service", id }, image);
   revalidatePath("/servicos");
+  revalidatePath(`/${salon.slug}`);
   redirect("/servicos");
 }
 
@@ -59,6 +65,7 @@ export async function deleteServiceAction(formData: FormData) {
 
   try {
     await prisma.service.delete({ where: { id } });
+    await deleteStoredImage(salon.id, service.imageId);
   } catch (err) {
     if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003")) {
       throw err;

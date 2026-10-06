@@ -52,7 +52,11 @@ export async function destroySession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getSession(): Promise<{ userId: string } | null> {
+/**
+ * `issuedAt` (segundos, do `iat` do JWT) permite derrubar sessões antigas
+ * depois de uma troca de senha — ver isSessionStillValid.
+ */
+export async function getSession(): Promise<{ userId: string; issuedAt: number } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -60,10 +64,27 @@ export async function getSession(): Promise<{ userId: string } | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (typeof payload.userId !== "string") return null;
-    return { userId: payload.userId };
+    return { userId: payload.userId, issuedAt: typeof payload.iat === "number" ? payload.iat : 0 };
   } catch {
     return null;
   }
+}
+
+/**
+ * Uma sessão do dono continua valendo se a conta não foi bloqueada pelo
+ * admin e se foi emitida depois da última troca de senha. O `iat` do JWT tem
+ * resolução de segundos, então compara em segundos (uma sessão criada no
+ * mesmo segundo da troca — o login logo depois de redefinir — continua válida).
+ */
+export function isSessionStillValid(
+  session: { issuedAt: number },
+  user: { disabledAt: Date | null; passwordChangedAt: Date | null }
+) {
+  if (user.disabledAt) return false;
+  if (user.passwordChangedAt && session.issuedAt < Math.floor(user.passwordChangedAt.getTime() / 1000)) {
+    return false;
+  }
+  return true;
 }
 
 /**

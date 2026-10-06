@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { storedImageUrl } from "@/lib/storedImages";
 
 /**
  * GET /api/salons/:salonSlug
@@ -35,6 +36,7 @@ export async function GET(
     professionals: salon.professionals.map((p) => ({
       id: p.id,
       name: p.name,
+      photoUrl: storedImageUrl(p.photoImageId) ?? p.photoUrl,
       serviceIds: p.services.map((s) => s.serviceId),
     })),
     services: salon.services.map((s) => ({
@@ -42,6 +44,7 @@ export async function GET(
       name: s.name,
       durationMinutes: s.durationMinutes,
       priceCents: s.priceCents,
+      imageUrl: storedImageUrl(s.imageId),
     })),
   });
 }

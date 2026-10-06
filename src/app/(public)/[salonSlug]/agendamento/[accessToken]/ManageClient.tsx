@@ -15,6 +15,9 @@ import {
   TextField,
   Rating,
 } from "@mui/material";
+import AddToCalendarButtons, { type CalendarLinks } from "../../AddToCalendarButtons";
+import InstallAppPrompt from "../../../../InstallAppPrompt";
+import EnableNotifications from "../../../../EnableNotifications";
 
 type AppointmentDetails = {
   status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
@@ -28,6 +31,8 @@ type AppointmentDetails = {
   clientName: string;
   hasReview: boolean;
   canReview: boolean;
+  rescheduledCount: number;
+  calendar: CalendarLinks | null;
 };
 
 const STATUS_LABEL: Record<AppointmentDetails["status"], string> = {
@@ -227,6 +232,36 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
             Cliente: {appointment.clientName}
           </Typography>
         </Paper>
+
+        {appointment.calendar && (
+          <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+            <AddToCalendarButtons
+              links={appointment.calendar}
+              note={
+                appointment.rescheduledCount > 0
+                  ? "Remarcou? Adicione de novo — o .ics substitui o evento antigo; no Google, apague o anterior."
+                  : "O evento já vem com lembrete 2 horas antes."
+              }
+            />
+          </Paper>
+        )}
+
+        {appointment.calendar && (
+          <Box sx={{ mb: 2 }}>
+            <EnableNotifications
+              accessToken={accessToken}
+              title="Receber lembrete do seu horário"
+              description="Avisamos no dia do atendimento e pedimos a confirmação de presença na véspera."
+            />
+          </Box>
+        )}
+
+        <Box sx={{ mb: 2 }}>
+          <InstallAppPrompt
+            appName={appointment.salonName}
+            description="Seus horários e o agendamento a um toque, direto da tela inicial."
+          />
+        </Box>
 
         {actionMessage && (
           <Alert severity="warning" sx={{ mb: 2 }}>

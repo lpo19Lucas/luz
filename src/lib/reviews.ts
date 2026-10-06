@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { dispatchInBackground, notifyOwnerAboutReview } from "@/lib/staffNotifications";
 
 export type ReviewErrorCode = "NOT_FOUND" | "NOT_COMPLETED" | "ALREADY_REVIEWED" | "INVALID_RATING";
 
@@ -27,7 +28,7 @@ export async function submitReviewByToken(params: { accessToken: string; rating:
   if (appointment.status !== "COMPLETED") throw new ReviewError("NOT_COMPLETED");
   if (appointment.review) throw new ReviewError("ALREADY_REVIEWED");
 
-  return prisma.review.create({
+  const review = await prisma.review.create({
     data: {
       salonId: appointment.salonId,
       appointmentId: appointment.id,
@@ -36,6 +37,8 @@ export async function submitReviewByToken(params: { accessToken: string; rating:
       comment: params.comment?.trim() || null,
     },
   });
+  dispatchInBackground(() => notifyOwnerAboutReview(review.id));
+  return review;
 }
 
 export interface PublicReviewsResult {

@@ -24,9 +24,12 @@ import {
   getSavedAppointmentTokens,
   addSavedAppointmentToken,
 } from "@/lib/clientStorage";
+import AddToCalendarButtons, { type CalendarLinks } from "./AddToCalendarButtons";
+import InstallAppPrompt from "../../InstallAppPrompt";
+import EnableNotifications from "../../EnableNotifications";
 
-type Professional = { id: string; name: string; serviceIds: string[] };
-type Service = { id: string; name: string; durationMinutes: number; priceCents: number };
+type Professional = { id: string; name: string; photoUrl: string | null; serviceIds: string[] };
+type Service = { id: string; name: string; durationMinutes: number; priceCents: number; imageUrl: string | null };
 type SalonInfo = { name: string; professionals: Professional[]; services: Service[] };
 
 type MyAppointment = {
@@ -69,6 +72,8 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [manageUrl, setManageUrl] = useState<string | null>(null);
+  const [calendarLinks, setCalendarLinks] = useState<CalendarLinks | null>(null);
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
 
   const [myAppointments, setMyAppointments] = useState<MyAppointment[]>([]);
 
@@ -174,6 +179,8 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
         return;
       }
       setManageUrl(data.manageUrl);
+      setCalendarLinks(data.calendar ?? null);
+      setCreatedToken(data.accessToken);
       saveClientInfo(salonSlug, { name: clientName, phone: clientPhone });
       addSavedAppointmentToken(salonSlug, data.accessToken);
     } finally {
@@ -235,6 +242,26 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
               {manageUrl}
             </a>
           </Paper>
+          {calendarLinks && (
+            <Box sx={{ mt: 3, textAlign: "left" }}>
+              <AddToCalendarButtons links={calendarLinks} note="O evento já vem com lembrete 2 horas antes." />
+            </Box>
+          )}
+          {createdToken && (
+            <Box sx={{ mt: 2, textAlign: "left" }}>
+              <EnableNotifications
+                accessToken={createdToken}
+                title="Receber lembrete do seu horário"
+                description="Avisamos no dia do atendimento e pedimos a confirmação de presença na véspera, direto no seu celular."
+              />
+            </Box>
+          )}
+          <Box sx={{ mt: 2, textAlign: "left" }}>
+            <InstallAppPrompt
+              appName={salon.name}
+              description="Agende de novo em um toque e acompanhe seus horários pela tela inicial do celular."
+            />
+          </Box>
         </Box>
       </Box>
     );
@@ -306,7 +333,11 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                     "&:hover": { transform: "translateY(-2px)" },
                   }}
                 >
-                  <Avatar sx={{ mx: "auto", mb: 0.5, bgcolor: "primary.main", fontWeight: 700 }}>
+                  <Avatar
+                    src={p.photoUrl ?? undefined}
+                    alt={p.name}
+                    sx={{ mx: "auto", mb: 0.5, width: 52, height: 52, bgcolor: "primary.main", fontWeight: 700 }}
+                  >
                     {p.name.charAt(0).toUpperCase()}
                   </Avatar>
                   <Typography variant="caption" sx={{ fontWeight: selected ? 700 : 500 }}>
@@ -341,13 +372,18 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                     "&:hover": { transform: "translateY(-2px)", boxShadow: "0 8px 20px rgba(27,42,74,.08)" },
                   }}
                 >
-                  <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {s.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {s.durationMinutes} min
-                    </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+                    {s.imageUrl && (
+                      <Avatar variant="rounded" src={s.imageUrl} alt={s.name} sx={{ width: 48, height: 48, borderRadius: 2 }} />
+                    )}
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                        {s.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {s.durationMinutes} min
+                      </Typography>
+                    </Box>
                   </Box>
                   <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
                     {formatPrice(s.priceCents)}
@@ -439,6 +475,14 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
             >
               {submitting ? "Agendando..." : "Confirmar agendamento"}
             </Button>
+            {/* LGPD: aviso de tratamento de dados (nome/telefone) no momento da coleta. */}
+            <Typography variant="caption" color="text.secondary" sx={{ textAlign: "center" }}>
+              Seu nome e telefone são usados só para gerenciar este agendamento com o salão. Veja a{" "}
+              <a href="/privacidade" target="_blank" rel="noopener" style={{ color: "inherit" }}>
+                Política de Privacidade
+              </a>
+              .
+            </Typography>
           </Stack>
         </Section>
       </Box>

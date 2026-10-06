@@ -11,11 +11,14 @@ import { whatsappLink } from "@/lib/phone";
 import { getSession } from "@/lib/auth";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { absoluteUrl } from "@/lib/appUrl";
+import { storedImageUrl } from "@/lib/storedImages";
+import { formatSalonAddress } from "@/lib/salonAddress";
 import { getPublicReviews } from "@/lib/reviews";
 import { reservePackagePublicAction } from "@/lib/actions/package";
 import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 import ReviewsCarousel from "./ReviewsCarousel";
+import LegalFooterLinks from "../../LegalFooterLinks";
 
 const GALLERY_GRADIENTS = [
   "linear-gradient(160deg,#E8C9A0,#D4AF37)",
@@ -32,6 +35,11 @@ const HOW_IT_WORKS = [
   { icon: "🗓️", title: "Escolha o horário", desc: "Vagas reais, atualizadas na hora." },
   { icon: "✅", title: "Pronto!", desc: "Confirmação na hora, sem precisar ligar." },
 ];
+
+/** Foto enviada pelo dono (stored_images) ou, no legado, a URL externa. */
+function photoOf(p: { photoImageId: string | null; photoUrl: string | null }) {
+  return storedImageUrl(p.photoImageId) ?? p.photoUrl;
+}
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -77,20 +85,6 @@ export async function generateMetadata({
   };
 }
 
-function formatAddress(salon: {
-  addressStreet: string | null;
-  addressNumber: string | null;
-  addressNeighborhood: string | null;
-  addressCity: string | null;
-  addressState: string | null;
-}) {
-  const line1 = [salon.addressStreet, salon.addressNumber].filter(Boolean).join(", ");
-  const line2 = [salon.addressNeighborhood, salon.addressCity && salon.addressState ? `${salon.addressCity}/${salon.addressState}` : salon.addressCity]
-    .filter(Boolean)
-    .join(" — ");
-  return [line1, line2].filter(Boolean).join(" · ");
-}
-
 export default async function BookingPage({
   params,
 }: {
@@ -115,7 +109,7 @@ export default async function BookingPage({
   const subscriptionBlocked = getSubscriptionAccess(salon.subscription) === "BLOCKED";
   const isBlocked = (!salon.publishedAt || subscriptionBlocked) && !isOwnerPreview;
 
-  const address = formatAddress(salon);
+  const address = formatSalonAddress(salon);
   const hasSocial = salon.instagramUrl || salon.facebookUrl || salon.tiktokUrl || salon.websiteUrl;
   const coverUrl = salon.coverImageData
     ? `/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`
@@ -541,20 +535,31 @@ export default async function BookingPage({
                         border: "1px solid",
                         borderColor: "divider",
                         borderRadius: 4,
-                        p: 3,
+                        overflow: "hidden",
                         textDecoration: "none",
                         color: "inherit",
                         transition: "transform .15s ease, box-shadow .15s ease",
                         "&:hover": { transform: "translateY(-4px)", boxShadow: "0 16px 32px rgba(27,42,74,.1)" },
                       }}
                     >
-                      <Typography sx={{ fontSize: 16, fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
-                      <Typography sx={{ fontSize: 13, color: "text.secondary", mb: 2 }}>
-                        {s.durationMinutes} min
-                      </Typography>
-                      <Typography sx={{ fontSize: 18, fontWeight: 700, color: "primary.main" }}>
-                        {formatPrice(s.priceCents)}
-                      </Typography>
+                      {s.imageId && (
+                        <Box
+                          component="img"
+                          src={storedImageUrl(s.imageId)!}
+                          alt={s.name}
+                          loading="lazy"
+                          sx={{ display: "block", width: "100%", aspectRatio: "4 / 3", objectFit: "cover" }}
+                        />
+                      )}
+                      <Box sx={{ p: 3 }}>
+                        <Typography sx={{ fontSize: 16, fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
+                        <Typography sx={{ fontSize: 13, color: "text.secondary", mb: 2 }}>
+                          {s.durationMinutes} min
+                        </Typography>
+                        <Typography sx={{ fontSize: 18, fontWeight: 700, color: "primary.main" }}>
+                          {formatPrice(s.priceCents)}
+                        </Typography>
+                      </Box>
                     </Box>
                   ))}
                 </Box>
@@ -599,8 +604,8 @@ export default async function BookingPage({
                       >
                         <Box
                           sx={{
-                            width: 64,
-                            height: 64,
+                            width: 88,
+                            height: 88,
                             borderRadius: "50%",
                             bgcolor: "secondary.main",
                             color: "primary.main",
@@ -612,12 +617,12 @@ export default async function BookingPage({
                             fontFamily: "var(--font-display)",
                             fontWeight: 700,
                             fontSize: 20,
-                            ...(p.photoUrl
-                              ? { backgroundImage: `url(${p.photoUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
+                            ...(photoOf(p)
+                              ? { backgroundImage: `url(${photoOf(p)})`, backgroundSize: "cover", backgroundPosition: "center" }
                               : {}),
                           }}
                         >
-                          {!p.photoUrl && p.name.charAt(0).toUpperCase()}
+                          {!photoOf(p) && p.name.charAt(0).toUpperCase()}
                         </Box>
                         <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#FAF7F2" }}>{p.name}</Typography>
                       </Box>
@@ -812,6 +817,9 @@ export default async function BookingPage({
               <Typography variant="caption" color="text.secondary">
                 {salon.name} · agendamento online pela Luz
               </Typography>
+              <Box sx={{ mt: 1 }}>
+                <LegalFooterLinks />
+              </Box>
             </Box>
           </>
         )}
