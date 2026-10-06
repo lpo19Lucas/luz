@@ -108,3 +108,11 @@ export function iosSupportsWebPush(userAgent: string) {
   const version = iosVersion(userAgent);
   return version === null || version >= 16.04;
 }
+
+/** Chave VAPID (base64url) → bytes, formato que pushManager.subscribe exige. */
+export function urlBase64ToUint8Array(base64Url: string) {
+  const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+}

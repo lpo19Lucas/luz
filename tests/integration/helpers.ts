@@ -12,6 +12,8 @@ export async function resetDb() {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
       "auth_attempts",
+      "notification_logs",
+      "push_subscriptions",
       "password_reset_tokens",
       "stored_images",
       "whatsapp_message_jobs",

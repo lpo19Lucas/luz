@@ -8,6 +8,7 @@ import { updateSalonSettings, updatePresenceConfirmationConfig } from "@/lib/act
 import { isAiDescriptionAvailable } from "@/lib/aiDescription";
 import SalonProfileForm from "./SalonProfileForm";
 import ChangePasswordForm from "./ChangePasswordForm";
+import NotificationSettings from "./NotificationSettings";
 
 export default async function ConfiguracoesPage() {
   const salon = await getCurrentSalon();
@@ -105,6 +106,8 @@ export default async function ConfiguracoesPage() {
           </Button>
         </Stack>
       </Paper>
+
+      <NotificationSettings />
 
       <ChangePasswordForm />
     </Box>

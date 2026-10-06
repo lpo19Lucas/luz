@@ -40,6 +40,7 @@ model User {
 
   salons              Salon[]
   passwordResetTokens PasswordResetToken[]
+  pushSubscriptions   PushSubscription[]
 
   @@map("users")
 }
@@ -125,6 +126,8 @@ model Salon {
   clientPackages     ClientPackage[]
   reviews            Review[]
   images             StoredImage[]
+  pushSubscriptions  PushSubscription[]
+  notificationLogs   NotificationLog[]
 
   subscription            Subscription?
   presenceConfirmationCfg PresenceConfirmationConfig?
@@ -275,10 +278,11 @@ model Client {
   banReason String?
   notes     String? // anotações do dono sobre o cliente
 
-  appointments Appointment[]
-  reservations ProductReservation[]
-  packages     ClientPackage[]
-  reviews      Review[]
+  appointments      Appointment[]
+  reservations      ProductReservation[]
+  packages          ClientPackage[]
+  reviews           Review[]
+  pushSubscriptions PushSubscription[]
 
   @@unique([salonId, phone]) // mesmo telefone = mesmo cliente dentro do salão
   @@map("clients")
@@ -703,4 +707,76 @@ model AuthAttempt {
 
   @@index([key, createdAt])
   @@map("auth_attempts")
+}
+
+// ------------------------------------------------------------
+// Notificações push do PWA (Fase E). Uma linha por aparelho/navegador
+// inscrito. Do dono/profissional (userId) ou do cliente (clientId, que se
+// inscreve pelo link do agendamento). Inscrição que o serviço de push
+// responde 404/410 (aparelho desinstalou/revogou) é apagada no envio.
+// ------------------------------------------------------------
+
+model PushSubscription {
+  id            String    @id @default(cuid())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  salonId       String
+  salon         Salon     @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId      String?
+  client        Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userAgent     String?
+  failureCount  Int       @default(0)
+  lastSuccessAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([salonId])
+  @@index([userId])
+  @@index([clientId])
+  @@map("push_subscriptions")
+}
+
+enum NotificationType {
+  TEST
+  // Dono/profissional — na hora do evento
+  BOOKING_CREATED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+  PRESENCE_CONFIRMED
+  PACKAGE_RESERVED
+  REVIEW_RECEIVED
+  // Dono/profissional — cron das 7h
+  DAILY_AGENDA
+  // Cliente
+  CLIENT_BOOKING_CONFIRMED
+  CLIENT_REMINDER_TODAY
+  CLIENT_PRESENCE_CHECK
+  CLIENT_REVIEW_REQUEST
+}
+
+enum NotificationStatus {
+  SENT // entregue a pelo menos um aparelho
+  FAILED // tinha aparelho, nenhum aceitou
+  NO_SUBSCRIPTION // destinatário sem aparelho inscrito
+}
+
+// Registro de cada notificação (destinatário x tipo). `dedupeKey` único
+// impede reenvio quando o cron roda duas vezes no mesmo dia; também alimenta
+// as métricas de entrega no admin.
+model NotificationLog {
+  id            String             @id @default(cuid())
+  salonId       String
+  salon         Salon              @relation(fields: [salonId], references: [id], onDelete: Cascade)
+  appointmentId String?
+  type          NotificationType
+  recipient     String // "user:<id>" ou "client:<id>"
+  status        NotificationStatus
+  devices       Int                @default(0) // aparelhos que receberam
+  dedupeKey     String?            @unique
+  createdAt     DateTime           @default(now())
+
+  @@index([salonId, createdAt])
+  @@map("notification_logs")
 }

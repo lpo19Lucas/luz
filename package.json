@@ -26,7 +26,8 @@
     "jose": "^5",
     "next": "^15",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.47",
@@ -37,6 +38,7 @@
     "@types/jest": "^29",
     "@types/node": "^22",
     "@types/react": "^19",
+    "@types/web-push": "^3.6.4",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.5.26",
     "jest": "^29",
