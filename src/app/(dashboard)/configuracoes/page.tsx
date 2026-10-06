@@ -9,6 +9,7 @@ import { isAiDescriptionAvailable } from "@/lib/aiDescription";
 import SalonProfileForm from "./SalonProfileForm";
 import ChangePasswordForm from "./ChangePasswordForm";
 import NotificationSettings from "./NotificationSettings";
+import InstallAppPrompt from "../../InstallAppPrompt";
 
 export default async function ConfiguracoesPage() {
   const salon = await getCurrentSalon();
@@ -107,6 +108,10 @@ export default async function ConfiguracoesPage() {
           </Button>
         </Stack>
       </Paper>
+
+      <Box sx={{ maxWidth: 560, mb: 3 }}>
+        <InstallAppPrompt appName="Luz" description="Instale o painel no celular ou no computador para receber as notificações." />
+      </Box>
 
       <NotificationSettings role="OWNER" muted={owner.mutedNotifications} />
 

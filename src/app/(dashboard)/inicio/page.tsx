@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { absoluteUrl } from "@/lib/appUrl";
 import { publishSalonAction } from "@/lib/actions/salon";
 import ShareLinkButton from "./ShareLinkButton";
+import InstallAppPrompt from "../../InstallAppPrompt";
 
 export default async function InicioPage() {
   const salon = await getCurrentSalon();
@@ -45,6 +46,13 @@ export default async function InicioPage() {
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
         Primeiros passos
       </Typography>
+
+      <Box sx={{ mb: 2 }}>
+        <InstallAppPrompt
+          appName="Luz"
+          description="Sua agenda na tela inicial do celular, com aviso de cada novo agendamento."
+        />
+      </Box>
 
       {salon.publishedAt ? (
         <Alert severity="success" sx={{ mb: 2 }}>

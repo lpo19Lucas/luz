@@ -116,3 +116,62 @@ export function urlBase64ToUint8Array(base64Url: string) {
   const raw = atob(base64);
   return Uint8Array.from(raw, (c) => c.charCodeAt(0));
 }
+
+export type InstallHelp = { platform: string; steps: string[] };
+
+/**
+ * Passo a passo de instalação pro navegador da pessoa — usado quando não há
+ * o prompt automático (iPhone, Samsung Internet, Firefox, Safari no Mac, ou o
+ * Chrome ainda não ofereceu). Nunca esconder o botão sem explicar.
+ */
+export function installHelp(userAgent: string, maxTouchPoints = 0): InstallHelp {
+  const ua = userAgent;
+  if (isIos(ua, maxTouchPoints)) {
+    if (/CriOS|FxiOS|EdgiOS/i.test(ua)) {
+      return {
+        platform: "iPhone (outro navegador)",
+        steps: [
+          "Toque em Compartilhar (o quadrado com a seta ⬆️, na barra de endereço).",
+          "Escolha Adicionar à Tela de Início. Se a opção não aparecer, abra este mesmo link no Safari e faça por lá.",
+          "Abra o app pela tela inicial para ativar as notificações.",
+        ],
+      };
+    }
+    return {
+      platform: "iPhone",
+      steps: [
+        "Toque em Compartilhar (o quadrado com a seta ⬆️, na barra de baixo do Safari).",
+        "Role a lista e toque em Adicionar à Tela de Início → Adicionar.",
+        "Abra o app pela tela inicial para ativar as notificações.",
+      ],
+    };
+  }
+  if (/Android/i.test(ua)) {
+    if (/SamsungBrowser/i.test(ua)) {
+      return { platform: "Samsung Internet", steps: ["Toque no menu ≡ (canto de baixo).", "Toque em Adicionar página a → Tela inicial."] };
+    }
+    if (/Firefox/i.test(ua)) {
+      return { platform: "Firefox (Android)", steps: ["Toque no menu ⋮.", "Toque em Instalar (ou Adicionar à tela inicial)."] };
+    }
+    return {
+      platform: "Android",
+      steps: ["Toque no menu ⋮ do navegador (canto de cima).", "Toque em Instalar app (ou Adicionar à tela inicial) e confirme."],
+    };
+  }
+  if (/Edg\//i.test(ua)) {
+    return { platform: "Edge", steps: ["Clique no ícone de instalar na barra de endereço, ou no menu … → Aplicativos → Instalar este site como aplicativo."] };
+  }
+  if (/Firefox/i.test(ua)) {
+    return { platform: "Firefox", steps: ["O Firefox no computador não instala sites como app. Abra este endereço no Chrome ou no Edge para instalar."] };
+  }
+  if (/Chrome|Chromium/i.test(ua)) {
+    return {
+      platform: "Chrome",
+      steps: ["Clique no ícone de instalar (monitor com seta) no canto direito da barra de endereço.", "Ou: menu ⋮ → Transmitir, salvar e compartilhar → Instalar página como app."],
+    };
+  }
+  if (/Safari/i.test(ua) && /Macintosh/i.test(ua)) {
+    return { platform: "Safari (Mac)", steps: ["No menu Arquivo, clique em Adicionar ao Dock."] };
+  }
+  return { platform: "este navegador", steps: ["Abra este endereço no Chrome (Android/computador) ou no Safari (iPhone) para instalar."] };
+}
