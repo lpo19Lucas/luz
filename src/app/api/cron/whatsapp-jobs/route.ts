@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 import { recordAppointmentEvent } from "@/lib/appointmentEvents";
 import { absoluteUrl } from "@/lib/appUrl";
+import { notifyStaffAboutAppointment, sendDailyAgendaDigests } from "@/lib/staffNotifications";
 
 /**
  * GET /api/cron/whatsapp-jobs
@@ -27,8 +28,10 @@ export async function GET(req: NextRequest) {
 
   const messageResult = await processWhatsAppJobs();
   const noShowResult = await handleNoShows();
+  // Depois do no-show: horário liberado já não entra no resumo do dia.
+  const digestResult = await sendDailyAgendaDigests();
 
-  return NextResponse.json({ ...messageResult, ...noShowResult });
+  return NextResponse.json({ ...messageResult, ...noShowResult, ...digestResult });
 }
 
 async function processWhatsAppJobs() {
@@ -119,6 +122,7 @@ async function handleNoShows() {
         actor: "SYSTEM",
         note: "Liberado automaticamente por falta de confirmação de presença",
       });
+      await notifyStaffAboutAppointment({ appointmentId: appt.id, kind: "CANCELLED", actor: "SYSTEM" });
       released += 1;
     } else {
       await prisma.appointment.update({

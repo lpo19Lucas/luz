@@ -2,6 +2,8 @@
 
 import { getCurrentMember } from "@/lib/currentSalon";
 import { notify } from "@/lib/push";
+import { prisma } from "@/lib/prisma";
+import { STAFF_NOTIFICATION_TYPES } from "@/lib/notificationTypes";
 
 export type TestNotificationState = { error?: string; success?: string } | undefined;
 
@@ -29,4 +31,20 @@ export async function sendTestNotificationAction(): Promise<TestNotificationStat
     default:
       return { error: "Não foi possível entregar. Tente desativar e ativar de novo." };
   }
+}
+
+/**
+ * Preferências: o formulário manda os tipos LIGADOS (checkbox "on");
+ * guardamos os desligados — assim um tipo novo nasce ligado pra todo mundo.
+ */
+export async function saveNotificationPrefsAction(_prev: TestNotificationState, formData: FormData): Promise<TestNotificationState> {
+  const member = await getCurrentMember();
+  const available = STAFF_NOTIFICATION_TYPES.filter((t) => member.role === "OWNER" || !t.ownerOnly).map((t) => t.type);
+  const enabled = new Set(formData.getAll("enabled").map(String));
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: member.userId }, select: { mutedNotifications: true } });
+  // Mantém silenciados os tipos que esta tela não mostra (ex.: só do dono).
+  const keep = user.mutedNotifications.filter((t) => !available.includes(t));
+  const muted = [...keep, ...available.filter((t) => !enabled.has(t))];
+  await prisma.user.update({ where: { id: member.userId }, data: { mutedNotifications: muted } });
+  return { success: "Preferências salvas." };
 }

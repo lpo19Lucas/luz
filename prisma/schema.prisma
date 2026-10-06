@@ -28,15 +28,17 @@ model User {
 
   // Painel admin: bloqueio de acesso do dono (login recusado e sessões
   // existentes derrubadas — ver getCurrentSalon).
-  disabledAt        DateTime?
+  disabledAt         DateTime?
   // Troca/redefinição de senha: sessões emitidas antes disso deixam de valer
   // (o JWT carrega `iat`; ver getCurrentSalon).
-  passwordChangedAt DateTime?
+  passwordChangedAt  DateTime?
   // Aceite dos Termos de Uso + Política de Privacidade (LGPD) — registrado no
   // cadastro ou no convite do cadastro facilitado. A versão vem de
   // src/lib/legal.ts (LEGAL_VERSION) e muda quando o texto mudar.
-  termsAcceptedAt   DateTime?
-  termsVersion      String?
+  termsAcceptedAt    DateTime?
+  termsVersion       String?
+  // Tipos de notificação que a pessoa desligou (Configurações/Minha conta).
+  mutedNotifications NotificationType[] @default([])
 
   salons              Salon[]
   passwordResetTokens PasswordResetToken[]

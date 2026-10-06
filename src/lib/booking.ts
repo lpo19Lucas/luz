@@ -5,6 +5,7 @@ import { getAvailableSlots } from "@/lib/slots";
 import { salonCalendarDay } from "@/lib/timezone";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 import { recordAppointmentEvent } from "@/lib/appointmentEvents";
+import { dispatchInBackground, notifyStaffAboutAppointment } from "@/lib/staffNotifications";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 import { findUsablePackageForAppointment } from "@/lib/packages";
 
@@ -239,6 +240,9 @@ export async function createAppointment(params: {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
 
+    dispatchInBackground(() =>
+      notifyStaffAboutAppointment({ appointmentId: appointment.id, kind: "CREATED", actor: params.actor })
+    );
     return { salon, appointment };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
@@ -290,6 +294,7 @@ async function cancelAppointmentEntity(
     );
   });
 
+  dispatchInBackground(() => notifyStaffAboutAppointment({ appointmentId: appointment.id, kind: "CANCELLED", actor }));
   return appointment;
 }
 
@@ -314,6 +319,12 @@ export async function confirmPresenceByToken(accessToken: string) {
     );
   });
 
+  // Só avisa na transição de verdade (AWAITING → CONFIRMED), não a cada clique.
+  if (appointment.status === "AWAITING_CONFIRMATION") {
+    dispatchInBackground(() =>
+      notifyStaffAboutAppointment({ appointmentId: appointment.id, kind: "PRESENCE_CONFIRMED", actor: "CLIENT" })
+    );
+  }
   return appointment;
 }
 
@@ -330,8 +341,9 @@ export async function rescheduleAppointmentByToken(params: {
   if (Number.isNaN(params.newStartAt.getTime())) throw new BookingError("PAST_SLOT");
   if (params.newStartAt.getTime() < Date.now()) throw new BookingError("PAST_SLOT");
 
+  let previousStartAt: Date | null = null;
   try {
-    return await prisma.$transaction(
+    const result = await prisma.$transaction(
       async (tx) => {
         const appointment = await tx.appointment.findUnique({
           where: { accessToken: params.accessToken },
@@ -360,7 +372,7 @@ export async function rescheduleAppointmentByToken(params: {
         }
         await assertNoConflict(tx, appointment.professionalId, params.newStartAt, newEndAt, appointment.id);
 
-        const previousStartAt = appointment.startAt;
+        previousStartAt = appointment.startAt;
         const presenceEnabled = appointment.salon.presenceConfirmationCfg?.enabled ?? false;
 
         const updated = await tx.appointment.update({
@@ -392,6 +404,11 @@ export async function rescheduleAppointmentByToken(params: {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
     );
+    const previous = previousStartAt;
+    dispatchInBackground(() =>
+      notifyStaffAboutAppointment({ appointmentId: result.id, kind: "RESCHEDULED", actor: params.actor, previousStartAt: previous })
+    );
+    return result;
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2034") {
       throw new BookingError("SLOT_TAKEN");

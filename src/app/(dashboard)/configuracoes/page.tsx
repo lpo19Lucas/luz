@@ -12,6 +12,7 @@ import NotificationSettings from "./NotificationSettings";
 
 export default async function ConfiguracoesPage() {
   const salon = await getCurrentSalon();
+  const owner = await prisma.user.findUniqueOrThrow({ where: { id: salon.ownerId }, select: { mutedNotifications: true } });
   const presenceCfg = await prisma.presenceConfirmationConfig.findUnique({
     where: { salonId: salon.id },
   });
@@ -107,7 +108,7 @@ export default async function ConfiguracoesPage() {
         </Stack>
       </Paper>
 
-      <NotificationSettings />
+      <NotificationSettings role="OWNER" muted={owner.mutedNotifications} />
 
       <ChangePasswordForm />
     </Box>
