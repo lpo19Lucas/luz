@@ -20,6 +20,23 @@ Contexto para o Claude Code. O status de produto completo está em `../STATUS-DO
 - **Fluxo de agendamento:** tudo passa por `src/lib/booking.ts` (`createAppointment`, `cancelAppointmentByToken`/`cancelAppointmentById`, `confirmPresenceByToken`, `rescheduleAppointmentByToken`) — nunca mexa em `Appointment` direto numa rota ou action nova. Erros são `BookingError` com um `code`, traduzidos pra HTTP por `src/lib/bookingErrors.ts`.
 - Novas tabelas precisam entrar no `TRUNCATE` de `tests/integration/helpers.ts`. `createTestSalon()` já cria vínculo profissional-serviço, disponibilidade o dia inteiro e assinatura (`TRIAL`) válida por padrão — use os overrides (`published`, `subscriptionAccess`, `presenceConfirmationEnabled`) pra testar os casos de bloqueio.
 - Commits em português, explicando o porquê. Um commit por feature, com tsc/lint/testes passando antes de cada um.
+- **Admin (`/admin`):** toda server action em `src/lib/actions/admin.ts` começa com `requireAdmin()` — o layout protegido NÃO protege a action (server action é endpoint público). Regras em `src/lib/adminSalons.ts`; `src/lib/actions/admin.integration.test.ts` tem a regressão que chama cada action sem sessão — inclua ali toda action nova.
+- **Cadastro de salão:** sempre por `provisionSalon` (`src/lib/salonProvisioning.ts`, uma transação) — usado pelo `/cadastro` e pelo cadastro facilitado do admin.
+- **Planos/preços/dias de teste:** vêm da tabela `platform_plans` (`getPlatformPlans`/`getPaidPlans`/`getTrialDays` em `src/lib/plans.ts`), editável em `/admin/planos`. Não hardcode preço. A tabela fica fora do `TRUNCATE` dos testes; quem mexe nela chama `restoreDefaultPlans()`.
+- **Senha/sessão:** `passwordChangedAt`/`disabledAt` derrubam sessões em `getCurrentSalon` (`isSessionStillValid`). Depois de trocar a senha do próprio usuário logado, chame `createSession` de novo. Links de senha em `src/lib/passwordReset.ts` (só o hash do token no banco). Login e `/admin` têm limite de tentativas (`src/lib/rateLimit.ts`, tabela `auth_attempts`).
+- **Termos/LGPD:** textos em `src/lib/legalTexts.ts`, dados da empresa por env `LEGAL_*` (`src/lib/legal.ts`). Mudou o texto de forma relevante → suba `LEGAL_VERSION` (o painel pede novo aceite a quem aceitou a versão anterior).
+- **Imagens de profissional/serviço:** `src/lib/storedImages.ts` (`setEntityImage`, `readImageField`) + componente `ImageUploadField` + rota `/api/images/:id`. Nunca selecione `StoredImage.data` em listagens.
+
+## Atualização 06/10/2026 — branch `feature/admin-acesso-imagens`
+Criada a partir de `redesign/fase-g-layout` (Fase G + pacotes/avaliações/comissão). 4 commits, cada um com tsc + lint + testes (28 de unidade, 174 de integração):
+1. Termos de Uso, Política de Privacidade (LGPD) e Contrato (`/termos`, `/privacidade`, `/contrato`) com aceite no cadastro; `provisionSalon` em transação; planos no banco; limite de tentativas de login.
+2. Recuperação de acesso (`/esqueci-senha`, `/redefinir-senha/[token]`, alterar senha em Configurações) — e-mail via Resend (`RESEND_API_KEY`, opcional).
+3. Painel admin completo (visão geral, salões, detalhe, cadastro facilitado com convite, planos) + correção de segurança no `setSubscriptionStatusAction`.
+4. Fotos de profissionais e serviços.
+
+Migration nova (aditiva): `20261006000000_admin_acesso_imagens`. Env vars novas (todas opcionais, em `.env.example`): `RESEND_API_KEY`, `EMAIL_FROM`, `LEGAL_COMPANY_NAME`, `LEGAL_CNPJ`, `LEGAL_ADDRESS`, `LEGAL_CONTACT_EMAIL`, `LEGAL_DPO_NAME`, `LEGAL_DPO_EMAIL`, `LEGAL_FORUM_CITY`.
+
+⚠️ Os textos jurídicos são uma base — revisar com advogado antes de operar comercialmente.
 
 ## Estado atual (02/10/2026)
 Branch local: **`dev/roadmap-outubro`**, que ainda não foi enviada ao GitHub. A `main`/produção está no commit `56dc1c2`, anterior a essa branch.
