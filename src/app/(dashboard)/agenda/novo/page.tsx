@@ -7,6 +7,7 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import NewAppointmentForm from "./NewAppointmentForm";
 import { assetKindForSalon } from "@/lib/clientAssets";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 export default async function NovoAgendamentoPage({
   searchParams,
@@ -15,6 +16,8 @@ export default async function NovoAgendamentoPage({
 }) {
   const { professionalId, date } = await searchParams;
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const [professionals, services] = await Promise.all([
     prisma.professional.findMany({
@@ -38,7 +41,7 @@ export default async function NovoAgendamentoPage({
 
       {professionals.length === 0 || services.length === 0 ? (
         <Typography color="text.secondary">
-          Cadastre pelo menos um profissional e um serviço antes de agendar.
+          Cadastre pelo menos {vocab.professional === "box" ? "um" : "um(a)"} {vocab.professional} e um serviço antes de agendar.
         </Typography>
       ) : (
         <NewAppointmentForm
@@ -57,6 +60,7 @@ export default async function NovoAgendamentoPage({
           initialProfessionalId={professionalId}
           initialDate={date}
           assetKind={assetKindForSalon(salon)}
+          segment={salon.segment}
         />
       )}
     </Box>

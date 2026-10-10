@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getAllClientStats } from "@/lib/clientStats";
 import { formatPhone, whatsappLink } from "@/lib/phone";
 import { formatSalonDate } from "@/lib/timezone";
-import { cap, getSegment } from "@/lib/segments";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -21,6 +21,8 @@ export default async function ClientesPage({
 }) {
   const { q } = await searchParams;
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const clients = await prisma.client.findMany({
     where: {
@@ -58,7 +60,7 @@ export default async function ClientesPage({
       <Paper elevation={1}>
         {clients.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">
-            Nenhum cliente encontrado.
+            Ninguém encontrado.
           </Typography>
         )}
         {clients.map((client) => {

@@ -2,7 +2,7 @@ import { Button } from "@mui/material";
 import { whatsappLink } from "@/lib/phone";
 
 /**
- * F10: SAC — "Falar com o suporte" abre o WhatsApp do Lucas. Some por
+ * F10: SAC — "Falar com o suporte" abre o WhatsApp do suporte. Some por
  * inteiro se a env não estiver configurada (sem suporte nenhum é melhor que
  * um botão quebrado).
  */
@@ -12,7 +12,7 @@ export default function SupportButton() {
 
   return (
     <Button
-      href={whatsappLink(phone, "Olá! Preciso de ajuda com a Luz.")}
+      href={whatsappLink(phone, "Olá! Preciso de ajuda com a DLJ Innovations.")}
       target="_blank"
       rel="noreferrer"
       variant="outlined"

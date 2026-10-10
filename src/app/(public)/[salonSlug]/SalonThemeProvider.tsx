@@ -1,7 +1,7 @@
 "use client";
 
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { theme as baseTheme } from "@/theme";
+import { salonLightTheme as baseTheme } from "@/theme";
 
 /** Tema da página pública (F3) com as cores do salão, caindo pra paleta
  * padrão quando o dono não configurou nada. ThemeProvider aninhado — o MUI

@@ -15,7 +15,7 @@ export function isEmailConfigured() {
 }
 
 function fromAddress() {
-  return process.env.EMAIL_FROM?.trim() || "Luz <onboarding@resend.dev>";
+  return process.env.EMAIL_FROM?.trim() || "DLJ Innovations <onboarding@resend.dev>";
 }
 
 export async function sendEmail(message: EmailMessage): Promise<{ delivered: boolean }> {
@@ -50,12 +50,12 @@ function escapeHtml(s: string) {
 export function passwordResetEmail(params: { name: string; link: string; expiresInLabel: string }): Omit<EmailMessage, "to"> {
   const name = escapeHtml(params.name.split(" ")[0] || params.name);
   return {
-    subject: "Redefinir sua senha da Luz",
-    text: `Olá, ${params.name}!\n\nRecebemos um pedido para redefinir a senha da sua conta na Luz. Para criar uma nova senha, acesse:\n\n${params.link}\n\nO link vale por ${params.expiresInLabel} e só pode ser usado uma vez. Se não foi você, ignore este e-mail — sua senha continua a mesma.`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#1B2A4A">
+    subject: "Redefinir sua senha da DLJ Innovations",
+    text: `Olá, ${params.name}!\n\nRecebemos um pedido para redefinir a senha da sua conta na DLJ Innovations. Para criar uma nova senha, acesse:\n\n${params.link}\n\nO link vale por ${params.expiresInLabel} e só pode ser usado uma vez. Se não foi você, ignore este e-mail — sua senha continua a mesma.`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;color:#0A1730">
 <h2 style="margin-bottom:8px">Redefinir senha</h2>
-<p>Olá, ${name}! Recebemos um pedido para redefinir a senha da sua conta na Luz.</p>
-<p style="margin:28px 0"><a href="${escapeHtml(params.link)}" style="background:#D4AF37;color:#1B2A4A;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Criar nova senha</a></p>
+<p>Olá, ${name}! Recebemos um pedido para redefinir a senha da sua conta na DLJ Innovations.</p>
+<p style="margin:28px 0"><a href="${escapeHtml(params.link)}" style="background:#D4AF37;color:#0A1730;padding:12px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Criar nova senha</a></p>
 <p style="font-size:13px;color:#555">O link vale por ${escapeHtml(params.expiresInLabel)} e só pode ser usado uma vez. Se não foi você, ignore este e-mail — sua senha continua a mesma.</p>
 </div>`,
   };

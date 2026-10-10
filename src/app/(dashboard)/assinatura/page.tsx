@@ -8,6 +8,7 @@ import { chooseSubscriptionPlan } from "@/lib/actions/salon";
 import { formatSalonDate } from "@/lib/timezone";
 import { getPaidPlans, PLAN_LABEL, formatBRL, getPlatformPixKey } from "@/lib/plans";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 const STATUS_LABEL: Record<string, string> = {
   TRIAL: "Período de teste",
@@ -25,6 +26,8 @@ const STATUS_COLOR: Record<string, "info" | "success" | "warning" | "default"> =
 
 export default async function AssinaturaPage() {
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
   const subscription = await prisma.subscription.findUnique({ where: { salonId: salon.id } });
 
   if (!subscription) {
@@ -55,7 +58,7 @@ export default async function AssinaturaPage() {
       {access === "BLOCKED" && (
         <Alert severity="error" sx={{ mb: 2, maxWidth: 480 }}>
           Seu link público está indisponível por falta de pagamento. Os agendamentos já marcados
-          continuam válidos, mas clientes não conseguem marcar novos até você pagar.
+          continuam válidos, mas {vocab.clients} não conseguem marcar novos até você pagar.
         </Alert>
       )}
 

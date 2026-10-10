@@ -10,11 +10,11 @@ import { cap, getSegment } from "@/lib/segments";
 import DashboardChrome from "./DashboardChrome";
 import type { Metadata } from "next";
 
-// PWA: o painel instala como o app "Luz" (abre na /agenda).
+// PWA: o painel instala como o app "DLJ Innovations" (abre na /agenda).
 export const metadata: Metadata = {
   manifest: "/app.webmanifest",
-  appleWebApp: { capable: true, title: "Luz", statusBarStyle: "black-translucent" },
-  icons: { apple: "/pwa-icon?app=luz&size=192" },
+  appleWebApp: { capable: true, title: "DLJ Innovations", statusBarStyle: "black-translucent" },
+  icons: { apple: "/dlj-icon-192.png" },
 };
 
 /** O vocabulário do menu muda com o segmento (profissionais/alunos/pacientes...). */
@@ -69,7 +69,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         >
           Publicamos os <Link href="/termos" target="_blank">Termos de Uso</Link>, a{" "}
           <Link href="/privacidade" target="_blank">Política de Privacidade</Link> e o{" "}
-          <Link href="/contrato" target="_blank">Contrato de Licença</Link> da Luz. Leia e confirme o aceite
+          <Link href="/contrato" target="_blank">Contrato de Licença</Link> da DLJ Innovations. Leia e confirme o aceite
           para continuar usando a plataforma.
         </Alert>
       )}
@@ -108,7 +108,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       salonName={salon.name}
       salonSlug={salon.slug}
       supportPhone={supportPhone}
-      supportHref={supportPhone ? whatsappLink(supportPhone, "Olá! Preciso de ajuda com a Luz.") : null}
+      supportHref={supportPhone ? whatsappLink(supportPhone, "Olá! Preciso de ajuda com a DLJ Innovations.") : null}
       logoutAction={logoutAction}
       navItems={navItemsFor(salon.segment)}
       banners={banners}

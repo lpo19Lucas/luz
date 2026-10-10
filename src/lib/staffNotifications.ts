@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { isPushConfigured, notify, type PushPayload } from "@/lib/push";
 import { formatSalonDate, formatSalonTime, salonCalendarDay } from "@/lib/timezone";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+import { getSegment } from "@/lib/segments";
 
 export { STAFF_NOTIFICATION_TYPES } from "@/lib/notificationTypes";
 
@@ -182,7 +183,7 @@ export async function notifyOwnerAboutPackageReservation(clientPackageId: string
 export async function notifyOwnerAboutReview(reviewId: string) {
   const review = await prisma.review.findUnique({
     where: { id: reviewId },
-    include: { salon: { select: { id: true, ownerId: true } }, client: { select: { name: true } } },
+    include: { salon: { select: { id: true, ownerId: true, segment: true } }, client: { select: { name: true } } },
   });
   if (!review) return 0;
   const [owner] = await filterMuted([{ userId: review.salon.ownerId, role: "OWNER" }], "REVIEW_RECEIVED");
@@ -194,7 +195,7 @@ export async function notifyOwnerAboutReview(reviewId: string) {
     type: "REVIEW_RECEIVED",
     payload: {
       title: `Nova avaliação ${stars}`,
-      body: review.comment ? `${firstName(review.client.name)}: ${review.comment.slice(0, 120)}` : `${firstName(review.client.name)} avaliou o atendimento.`,
+      body: review.comment ? `${firstName(review.client.name)}: ${review.comment.slice(0, 120)}` : `${firstName(review.client.name)} avaliou ${getSegment(review.salon.segment).vocab.appointmentGender === "f" ? "a" : "o"} ${getSegment(review.salon.segment).vocab.appointment}.`,
       url: "/avaliacoes",
       tag: `review-${review.id}`,
     },
@@ -203,12 +204,16 @@ export async function notifyOwnerAboutReview(reviewId: string) {
 }
 
 /** Texto do resumo do dia (puro). */
-export function dailyAgendaMessage(items: { startAt: Date; clientName: string; serviceName: string }[]): PushPayload | null {
+export function dailyAgendaMessage(
+  items: { startAt: Date; clientName: string; serviceName: string }[],
+  segment?: string | null
+): PushPayload | null {
+  const { vocab } = getSegment(segment);
   if (items.length === 0) return null;
   const first = items[0];
   return {
     title: "Sua agenda de hoje",
-    body: `${items.length} atendimento${items.length > 1 ? "s" : ""} · primeiro às ${formatSalonTime(first.startAt)} (${firstName(first.clientName)}, ${first.serviceName})`,
+    body: `${items.length} ${items.length > 1 ? vocab.appointments : vocab.appointment} · primeiro às ${formatSalonTime(first.startAt)} (${firstName(first.clientName)}, ${first.serviceName})`,
     url: "/agenda",
     tag: "agenda-do-dia",
   };
@@ -230,7 +235,7 @@ export async function sendDailyAgendaDigests(now: Date = new Date()) {
     where: { startAt: { gte: start, lt: end }, status: { in: ["CONFIRMED", "AWAITING_CONFIRMATION"] } },
     orderBy: { startAt: "asc" },
     include: {
-      salon: { select: { id: true, ownerId: true, subscription: true } },
+      salon: { select: { id: true, ownerId: true, segment: true, subscription: true } },
       professional: { select: { userId: true, active: true } },
       service: { select: { name: true } },
       client: { select: { name: true } },
@@ -258,7 +263,8 @@ export async function sendDailyAgendaDigests(now: Date = new Date()) {
     const [allowed] = await filterMuted([group.recipient], "DAILY_AGENDA");
     if (!allowed) continue;
     const payload = dailyAgendaMessage(
-      group.items.map((a) => ({ startAt: a.startAt, clientName: a.client.name, serviceName: a.service.name }))
+      group.items.map((a) => ({ startAt: a.startAt, clientName: a.client.name, serviceName: a.service.name })),
+      group.items[0].salon.segment
     );
     if (!payload) continue;
     const result = await notify({

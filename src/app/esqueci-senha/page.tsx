@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Box, Paper, TextField, Button, Typography, Alert, Stack } from "@mui/material";
 import Link from "next/link";
 import { requestPasswordResetAction } from "@/lib/actions/password";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function EsqueciSenhaPage() {
   const [state, formAction, pending] = useActionState(requestPasswordResetAction, undefined);
@@ -11,6 +12,7 @@ export default function EsqueciSenhaPage() {
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", bgcolor: "background.default", px: 2 }}>
       <Paper elevation={1} sx={{ p: 4, width: "100%", maxWidth: 380 }}>
+        <Box sx={{ mb: 2.5 }}><BrandLogo size={40} /></Box>
         <Typography variant="h5" sx={{ fontWeight: 500, mb: 1 }}>
           Esqueci minha senha
         </Typography>

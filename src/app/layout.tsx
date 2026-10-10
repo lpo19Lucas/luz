@@ -22,10 +22,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(getAppUrl()),
   title: {
-    default: "Luz — Agendamento online para salões e barbearias",
-    template: "%s · Luz",
+    default: "DLJ Innovations — Agendamento online para negócios de serviços",
+    template: "%s · DLJ Innovations",
   },
-  description: "Plataforma de agendamento para salões e barbearias",
+  description: "Plataforma de agendamento online para barbearias, salões, estúdios, clínicas, aulas e mais",
 };
 
 const INSTALL_PROMPT_CAPTURE = `window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__luzInstallPrompt=e;window.dispatchEvent(new Event("luz:installprompt"));});window.addEventListener("appinstalled",function(){window.__luzInstallPrompt=null;window.dispatchEvent(new Event("luz:installprompt"));});`;

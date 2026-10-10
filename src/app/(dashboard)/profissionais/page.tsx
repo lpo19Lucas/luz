@@ -71,7 +71,7 @@ export default async function ProfissionaisPage() {
 
       <Paper elevation={1} sx={{ p: 2.5, maxWidth: 520 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
-          Novo profissional
+          Adicionar {vocab.professional}
         </Typography>
         <Stack component="form" action={createProfessionalAction} spacing={2}>
           <ImageUploadField label="Foto (opcional)" />
@@ -85,7 +85,7 @@ export default async function ProfissionaisPage() {
             inputProps={{ min: 0, max: 100, step: "0.1" }}
             helperText="Opcional — usado no relatório de Comissões"
           />
-          <AvailabilityFields services={services} />
+          <AvailabilityFields services={services} professionalWord={vocab.professional} />
           <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
             Adicionar
           </Button>

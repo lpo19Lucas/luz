@@ -10,9 +10,12 @@ import SalonProfileForm from "./SalonProfileForm";
 import ChangePasswordForm from "./ChangePasswordForm";
 import NotificationSettings from "./NotificationSettings";
 import InstallAppPrompt from "../../InstallAppPrompt";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 export default async function ConfiguracoesPage() {
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
   const owner = await prisma.user.findUniqueOrThrow({ where: { id: salon.ownerId }, select: { mutedNotifications: true } });
   const presenceCfg = await prisma.presenceConfirmationConfig.findUnique({
     where: { salonId: salon.id },
@@ -55,15 +58,15 @@ export default async function ConfiguracoesPage() {
 
       <Paper elevation={1} sx={{ p: 3, maxWidth: 480, mb: 3 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 2 }}>
-          Dados do salão
+          Dados {businessOf(vocab)}
         </Typography>
         <Stack component="form" action={updateSalonSettings} spacing={2}>
-          <TextField name="name" label="Nome do salão" defaultValue={salon.name} required size="small" />
+          <TextField name="name" label={`Nome ${businessOf(vocab)}`} defaultValue={salon.name} required size="small" />
           <TextField
             name="pixKey"
-            label="Chave PIX do salão (recebimento dos serviços)"
+            label={`Chave PIX ${businessOf(vocab)} (recebimento dos serviços)`}
             defaultValue={salon.pixKey ?? ""}
-            helperText="Mostrada ao cliente na hora de pagar o serviço — sem gateway, é autodeclarado (spec 8.8)."
+            helperText={`Mostrada ao ${vocab.client} na hora de pagar o serviço — sem gateway, é autodeclarado (spec 8.8).`}
             size="small"
           />
           <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
@@ -77,7 +80,7 @@ export default async function ConfiguracoesPage() {
           Confirmação de presença
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Pede ao cliente pra confirmar presença antes do horário (P0.10).
+          Pede ao {vocab.client} pra confirmar presença antes do horário (P0.10).
         </Typography>
         <Stack component="form" action={updatePresenceConfirmationConfig} spacing={2}>
           <FormControlLabel
@@ -94,7 +97,7 @@ export default async function ConfiguracoesPage() {
           />
           <TextField
             name="actionOnNoConfirm"
-            label="Se o cliente não confirmar"
+            label={`Se o ${vocab.client} não confirmar`}
             select
             size="small"
             defaultValue={presenceCfg?.actionOnNoConfirm ?? "ALERT_ONLY"}
@@ -110,7 +113,7 @@ export default async function ConfiguracoesPage() {
       </Paper>
 
       <Box sx={{ maxWidth: 560, mb: 3 }}>
-        <InstallAppPrompt appName="Luz" description="Instale o painel no celular ou no computador para receber as notificações." />
+        <InstallAppPrompt appName="DLJ Innovations" description="Instale o painel no celular ou no computador para receber as notificações." />
       </Box>
 
       <NotificationSettings role="OWNER" muted={owner.mutedNotifications} />

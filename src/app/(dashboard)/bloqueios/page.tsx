@@ -8,6 +8,7 @@ import { deleteAgendaBlockAction } from "@/lib/actions/agendaBlock";
 import { WEEKDAYS } from "@/lib/weekdays";
 import AgendaBlockForm from "./AgendaBlockForm";
 import type { AgendaBlock } from "@prisma/client";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 const RECURRENCE_LABEL: Record<string, string> = {
   ONCE: "Só um dia",
@@ -52,6 +53,8 @@ function describeBlock(block: AgendaBlock & { professional: { name: string } | n
 
 export default async function BloqueiosPage() {
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const [blocks, professionals] = await Promise.all([
     prisma.agendaBlock.findMany({
@@ -71,7 +74,7 @@ export default async function BloqueiosPage() {
         Bloqueios de agenda
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Feriados, folgas e fechamentos — o cliente não consegue agendar nesses dias/horários.
+        Feriados, folgas e fechamentos — {vocab.client === "cliente" ? "o cliente" : `o ${vocab.client}`} não consegue agendar nesses dias/horários.
       </Typography>
 
       <Paper elevation={1} sx={{ mb: 3 }}>
@@ -112,7 +115,7 @@ export default async function BloqueiosPage() {
         ))}
       </Paper>
 
-      <AgendaBlockForm professionals={professionals.map((p) => ({ id: p.id, name: p.name }))} />
+      <AgendaBlockForm professionals={professionals.map((p) => ({ id: p.id, name: p.name }))} segment={salon.segment} />
     </Box>
   );
 }

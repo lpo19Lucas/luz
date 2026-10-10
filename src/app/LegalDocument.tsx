@@ -1,6 +1,7 @@
 // Layout comum dos documentos jurídicos (/termos, /privacidade, /contrato).
 import { Box, Typography, Stack } from "@mui/material";
 import Link from "next/link";
+import BrandLogo from "@/components/BrandLogo";
 import { LEGAL_VERSION_LABEL, type LegalSection } from "@/lib/legal";
 
 const DOCS = [
@@ -23,13 +24,9 @@ export default function LegalDocument({
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh", py: { xs: 4, md: 7 } }}>
       <Box component="article" sx={{ maxWidth: 760, mx: "auto", px: 2.5 }}>
-        <Typography
-          component={Link}
-          href="/"
-          sx={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 20, color: "primary.main", textDecoration: "none" }}
-        >
-          Luz
-        </Typography>
+        <Link href="/" style={{ textDecoration: "none" }} aria-label="DLJ Innovations">
+          <BrandLogo size={36} />
+        </Link>
 
         <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1, mt: 3, mb: 4 }}>
           {DOCS.map((doc) => (

@@ -199,7 +199,7 @@ export async function generateAccessLinkAction(_prev: AdminFormState, formData: 
   // Quem nunca aceitou os termos (convite) ganha o link de 7 dias.
   const purpose = salon.owner.termsVersion ? "RESET" : "INVITE";
   const { link, expiresInLabel } = await createPasswordToken(salon.owner.id, purpose);
-  const text = `Olá, ${salon.owner.name}! Aqui está o link para definir sua senha de acesso à Luz (${salon.name}): ${link} — vale por ${expiresInLabel}.`;
+  const text = `Olá, ${salon.owner.name}! Aqui está o link para definir sua senha de acesso à DLJ Innovations (${salon.name}): ${link} — vale por ${expiresInLabel}.`;
   return { link, whatsappHref: salon.owner.phone ? whatsappLink(salon.owner.phone, text) : null, success: `Link válido por ${expiresInLabel}.` };
 }
 
@@ -249,7 +249,7 @@ export async function createSalonAction(_prev: AdminFormState, formData: FormDat
       activatedBy: "admin (cadastro facilitado)",
     });
     const { link } = await createPasswordToken(user.id, "INVITE");
-    const text = `Olá, ${user.name}! Seu salão ${salon.name} já está cadastrado na Luz. Crie sua senha por este link (vale 7 dias): ${link}`;
+    const text = `Olá, ${user.name}! Seu salão ${salon.name} já está cadastrado na DLJ Innovations. Crie sua senha por este link (vale 7 dias): ${link}`;
     revalidatePath("/admin", "layout");
     return {
       success: `Salão "${salon.name}" criado.`,

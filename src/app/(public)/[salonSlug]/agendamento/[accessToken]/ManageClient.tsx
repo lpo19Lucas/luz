@@ -18,12 +18,14 @@ import {
 import AddToCalendarButtons, { type CalendarLinks } from "../../AddToCalendarButtons";
 import InstallAppPrompt from "../../../../InstallAppPrompt";
 import EnableNotifications from "../../../../EnableNotifications";
+import { cap, getSegment, grammar } from "@/lib/segments";
 
 type AppointmentDetails = {
   status: "AWAITING_CONFIRMATION" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   startAt: string;
   salonName: string;
   salonSlug: string;
+  segment?: string;
   professionalId: string;
   professionalName: string;
   serviceId: string;
@@ -49,6 +51,8 @@ function todayISODate() {
 
 export default function ManageClient({ accessToken }: { accessToken: string }) {
   const [appointment, setAppointment] = useState<AppointmentDetails | null>(null);
+  const { vocab } = getSegment(appointment?.segment);
+  const apptG = grammar(vocab.appointmentGender);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<"cancel" | "confirm" | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
@@ -229,7 +233,7 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
             })}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
-            Cliente: {appointment.clientName}
+            {cap(vocab.client)}: {appointment.clientName}
           </Typography>
         </Paper>
 
@@ -251,7 +255,7 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
             <EnableNotifications
               accessToken={accessToken}
               title="Receber lembrete do seu horário"
-              description="Avisamos no dia do atendimento e pedimos a confirmação de presença na véspera."
+              description={`Avisamos no dia ${apptG.of} ${vocab.appointment} e pedimos a confirmação de presença na véspera.`}
             />
           </Box>
         )}
@@ -271,14 +275,14 @@ export default function ManageClient({ accessToken }: { accessToken: string }) {
 
         {appointment.hasReview && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Você já avaliou este atendimento, obrigado!
+            Você já avaliou {apptG.this} {vocab.appointment}, obrigado!
           </Alert>
         )}
 
         {appointment.canReview && (
           <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
             <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              Avalie seu atendimento
+              Avalie {apptG.your} {vocab.appointment}
             </Typography>
             <Stack spacing={1.5} alignItems="flex-start">
               <Rating

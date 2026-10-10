@@ -64,23 +64,7 @@ export default function DashboardChrome({
       }}
     >
       <Box sx={{ p: 2.5, pb: 1.5, display: "flex", alignItems: "center", gap: 1.5 }}>
-        <Box
-          sx={{
-            width: 32,
-            height: 32,
-            borderRadius: "9px",
-            bgcolor: "secondary.main",
-            color: "primary.main",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontWeight: 700,
-            fontFamily: "var(--font-display)",
-            flexShrink: 0,
-          }}
-        >
-          L
-        </Box>
+        <Box component="img" src="/dlj-icon-192.png" alt="" width={34} height={34} sx={{ borderRadius: "10px", flexShrink: 0 }} />
         <Typography variant="body1" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
           {salonName}
         </Typography>
@@ -99,16 +83,16 @@ export default function DashboardChrome({
                   display: "flex",
                   alignItems: "center",
                   gap: 1.25,
-                  color: active ? "#D4AF37" : "#C3CAE0",
+                  color: active ? "#3AA6FF" : "#C3CAE0",
                   textDecoration: "none",
                   fontSize: 13.5,
                   fontWeight: active ? 700 : 500,
                   px: 1.5,
                   py: 1.1,
                   borderRadius: "10px",
-                  bgcolor: active ? "rgba(212,175,55,.14)" : "transparent",
+                  bgcolor: active ? "rgba(58,166,255,.16)" : "transparent",
                   transition: "background .15s ease, color .15s ease",
-                  "&:hover": { bgcolor: active ? "rgba(212,175,55,.14)" : "rgba(255,255,255,0.06)" },
+                  "&:hover": { bgcolor: active ? "rgba(58,166,255,.16)" : "rgba(255,255,255,0.06)" },
                 }}
               >
                 <Box component="span" sx={{ width: 18, textAlign: "center", flexShrink: 0 }}>
@@ -123,12 +107,12 @@ export default function DashboardChrome({
 
       <Divider sx={{ borderColor: "rgba(255,255,255,0.12)" }} />
       <Box sx={{ p: 1.5 }}>
-        <InstallAppPrompt appName="Luz" variant="sidebar" />
+        <InstallAppPrompt appName="DLJ Innovations" variant="sidebar" />
         <EnableNotifications variant="sidebar" />
         <Typography
           component={Link}
           href={`/${salonSlug}`}
-          sx={{ display: "block", color: "#D4AF37", textDecoration: "none", fontSize: 13, px: 1, py: 1 }}
+          sx={{ display: "block", color: "#3AA6FF", textDecoration: "none", fontSize: 13, px: 1, py: 1 }}
         >
           Ver site público ↗
         </Typography>
@@ -159,7 +143,7 @@ export default function DashboardChrome({
           <AppBar
             position="fixed"
             elevation={0}
-            sx={{ bgcolor: "primary.main", backgroundImage: "linear-gradient(135deg,#1B2A4A,#2E4472)" }}
+            sx={{ bgcolor: "primary.main", backgroundImage: "linear-gradient(135deg,#071126,#16346A)" }}
           >
             <Toolbar sx={{ gap: 1.5 }}>
               <IconButton

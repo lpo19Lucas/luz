@@ -1,5 +1,5 @@
 /**
- * Multissegmento (S1): a Luz atende vários nichos de agendamento, não só
+ * Multissegmento (S1): a DLJ Innovations atende vários nichos de agendamento, não só
  * barbearia. Cada segmento é uma configuração com vocabulário, serviços de
  * exemplo, tipo de negócio pro Google (JSON-LD), conteúdo da página de venda
  * (/para/[slug]) e os recursos ligados ou desligados.
@@ -8,7 +8,7 @@
  * O segmento do salão fica em `Salon.segment` (string, validada aqui).
  *
  * Ondas:
- *  1 — beleza e bem-estar: o que já existe na Luz serve quase sem adaptação.
+ *  1 — beleza e bem-estar: o que já existe na DLJ Innovations serve quase sem adaptação.
  *  2 — serviços: o fluxo é o mesmo, mas a "agenda" nem sempre é uma pessoa.
  *  3 — saúde: até o horário marcado é dado sensível (LGPD, art. 11). Roda no
  *      modo discreto (src/lib/discreet.ts). Revisão jurídica dos textos ainda pendente.
@@ -42,7 +42,7 @@ export const SEGMENT_SLUGS = [
 
 export type SegmentSlug = (typeof SEGMENT_SLUGS)[number];
 
-/** Segmento de quem já usava a Luz antes do multissegmento. */
+/** Segmento de quem já usava a DLJ Innovations antes do multissegmento. */
 export const DEFAULT_SEGMENT: SegmentSlug = "barbearia";
 
 export type SegmentWave = 1 | 2 | 3;
@@ -61,6 +61,8 @@ export type SegmentVocab = {
   /** Como o negócio se chama: "barbearia", "salão", "consultório", "estúdio" */
   business: string;
   businessGender: "m" | "f";
+  /** Gênero de "atendimento/sessão/aula": define "o/a", "esse/essa", "nenhum/nenhuma". */
+  appointmentGender: "m" | "f";
 };
 
 export type SegmentService = { name: string; durationMinutes: number; priceCents: number };
@@ -117,7 +119,17 @@ const v = (
   professionals: string,
   business: string,
   businessGender: "m" | "f"
-): SegmentVocab => ({ client, clients, appointment, appointments, professional, professionals, business, businessGender });
+): SegmentVocab => ({
+  client,
+  clients,
+  appointment,
+  appointments,
+  professional,
+  professionals,
+  business,
+  businessGender,
+  appointmentGender: ["sessão", "aula", "consulta", "lavagem"].includes(appointment) ? "f" : "m",
+});
 
 const s = (name: string, durationMinutes: number, price: number): SegmentService => ({
   name,
@@ -222,7 +234,7 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
       examples: ["Mão", "Pé", "Mão + pé", "Esmaltação em gel", "Alongamento", "Manutenção"],
       faq: [
         { q: "Atendo em casa, funciona?", a: "O agendamento funciona do mesmo jeito. O campo de endereço do atendimento a domicílio está planejado." },
-        { q: "Posso vender pacotes de atendimento?", a: "Sim, a Luz já tem pacotes de sessões com controle de saldo." },
+        { q: "Posso vender pacotes de atendimento?", a: "Sim, a DLJ Innovations já tem pacotes de sessões com controle de saldo." },
       ],
     },
   },
@@ -249,7 +261,7 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
       examples: ["Fio a fio", "Volume russo", "Manutenção", "Remoção", "Lash lifting"],
       faq: [
         { q: "Dá pra ter duração diferente por técnica?", a: "Sim. Cada serviço tem a própria duração e o preço." },
-        { q: "A Luz avisa a cliente de voltar para manutenção?", a: "O lembrete de retorno automático faz parte do agendamento recorrente, que vem em seguida." },
+        { q: "A DLJ Innovations avisa a cliente de voltar para manutenção?", a: "O lembrete de retorno automático faz parte do agendamento recorrente, que vem em seguida." },
       ],
     },
   },
@@ -322,7 +334,7 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
       ],
       examples: ["Limpeza de pele", "Drenagem", "Peeling", "Massagem modeladora", "Pacotes de sessões"],
       faq: [
-        { q: "A Luz controla pacotes de sessões?", a: "Sim. Você define o pacote, vende para a cliente e o saldo diminui a cada sessão concluída." },
+        { q: "A DLJ Innovations controla pacotes de sessões?", a: "Sim. Você define o pacote, vende para a cliente e o saldo diminui a cada sessão concluída." },
         { q: "Posso ter mais de uma sala ou profissional?", a: "Sim, cadastre cada profissional com os seus horários." },
       ],
     },
@@ -344,7 +356,7 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
       pains: [commonPains.phone, { icon: "🔁", title: "Cliente some depois da primeira vez", body: "O histórico mostra quem está há mais tempo sem voltar. O lembrete de retorno automático vem com o agendamento recorrente." }, commonPains.noShow],
       examples: ["Pernas", "Axilas", "Virilha", "Buço", "Pacote de sessões"],
       faq: [
-        { q: "Posso vender pacote de sessões?", a: "Sim. Pacotes com saldo já fazem parte da Luz." },
+        { q: "Posso vender pacote de sessões?", a: "Sim. Pacotes com saldo já fazem parte da DLJ Innovations." },
         { q: "As clientes veem meus preços?", a: "Sim, o link mostra serviço, duração e preço antes de marcar." },
       ],
     },
@@ -385,11 +397,11 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
     landing: {
       title: "Agendamento online para podóloga",
       headline: "Agenda da podologia no piloto automático",
-      subheadline: "O cliente marca pelo seu link, e a Luz guarda só o necessário: agenda e contato, sem prontuário.",
+      subheadline: "O cliente marca pelo seu link, e a DLJ Innovations guarda só o necessário: agenda e contato, sem prontuário.",
       pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "Privacidade do cliente", body: "A plataforma não guarda prontuário nem ficha clínica, e o modo discreto faz os lembretes dizerem só “seu horário”, sem citar o serviço." }],
       examples: ["Podologia clínica", "Unha encravada", "Pedicure podológica", "Palmilhas", "Reflexologia"],
       faq: [
-        { q: "A Luz guarda prontuário?", a: "Não. A Luz cuida da agenda, não do prontuário. Guarde as fichas clínicas no seu sistema próprio." },
+        { q: "A DLJ Innovations guarda prontuário?", a: "Não. A DLJ Innovations cuida da agenda, não do prontuário. Guarde as fichas clínicas no seu sistema próprio." },
         { q: "Posso receber pelo Pix?", a: "O cliente vê a chave Pix da sua clínica no agendamento." },
       ],
     },
@@ -635,4 +647,11 @@ export function cap(text: string): string {
 /** "do salão" / "da barbearia" */
 export function businessOf(vocab: SegmentVocab): string {
   return `${vocab.businessGender === "f" ? "da" : "do"} ${vocab.business}`;
+}
+
+/** Artigos e concordâncias de "atendimento/sessão/aula" (f) ou "atendimento" (m). */
+export function grammar(gender: "m" | "f") {
+  return gender === "f"
+    ? { the: "a", a: "uma", this: "essa", your: "sua", of: "da", in: "na", none: "Nenhuma", any: "alguma" }
+    : { the: "o", a: "um", this: "esse", your: "seu", of: "do", in: "no", none: "Nenhum", any: "algum" };
 }

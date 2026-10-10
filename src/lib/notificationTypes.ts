@@ -9,8 +9,8 @@ export const STAFF_NOTIFICATION_TYPES: { type: NotificationType; label: string; 
   { type: "BOOKING_CREATED", label: "Novo agendamento" },
   { type: "BOOKING_CANCELLED", label: "Cancelamento" },
   { type: "BOOKING_RESCHEDULED", label: "Remarcação" },
-  { type: "PRESENCE_CONFIRMED", label: "Presença confirmada pelo cliente" },
+  { type: "PRESENCE_CONFIRMED", label: "Presença confirmada" },
   { type: "DAILY_AGENDA", label: "Resumo do dia às 7h" },
-  { type: "PACKAGE_RESERVED", label: "Pacote reservado pelo cliente", ownerOnly: true },
+  { type: "PACKAGE_RESERVED", label: "Pacote reservado", ownerOnly: true },
   { type: "REVIEW_RECEIVED", label: "Avaliação nova", ownerOnly: true },
 ];

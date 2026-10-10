@@ -83,7 +83,7 @@ export default function InstallAppPrompt({
   return (
     <>
       {variant === "sidebar" ? (
-        <Button onClick={handleClick} size="small" fullWidth sx={{ color: "#D4AF37", justifyContent: "flex-start", px: 1 }}>
+        <Button onClick={handleClick} size="small" fullWidth sx={{ color: "#3AA6FF", justifyContent: "flex-start", px: 1 }}>
           📲 {label}
         </Button>
       ) : (

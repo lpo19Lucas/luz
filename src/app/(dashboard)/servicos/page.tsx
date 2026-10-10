@@ -56,7 +56,7 @@ export default async function ServicosPage() {
                 {svc.durationMinutes} min
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
+            <Typography sx={{ fontWeight: 700, color: "secondary.main" }}>
               {Object.keys(parseSizePrices(svc.sizePricesJson)).length > 0 ? "a partir de " : ""}
               {formatPrice(Math.min(svc.priceCents, ...Object.values(parseSizePrices(svc.sizePricesJson))))}
             </Typography>

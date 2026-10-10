@@ -1,5 +1,5 @@
 /**
- * Dados jurídicos da Luz usados nos Termos de Uso, Política de Privacidade
+ * Dados jurídicos da DLJ Innovations usados nos Termos de Uso, Política de Privacidade
  * (LGPD) e Contrato de Licença (/termos, /privacidade, /contrato).
  *
  * Vêm de env vars pra dar pra preencher o CNPJ/razão social sem mexer no
@@ -25,7 +25,7 @@ function env(name: string) {
 
 export function getLegalEntity() {
   return {
-    brand: "Luz",
+    brand: "DLJ Innovations",
     companyName: env("LEGAL_COMPANY_NAME") ?? PLACEHOLDER,
     cnpj: env("LEGAL_CNPJ") ?? PLACEHOLDER,
     address: env("LEGAL_ADDRESS") ?? PLACEHOLDER,

@@ -15,7 +15,7 @@ export default async function MinhaContaPage() {
         Minha conta
       </Typography>
       <Box sx={{ mb: 3, maxWidth: 560 }}>
-        <InstallAppPrompt appName="Luz" description="Sua agenda na tela inicial do celular, como um aplicativo." />
+        <InstallAppPrompt appName="DLJ Innovations" description="Sua agenda na tela inicial do celular, como um aplicativo." />
       </Box>
       <NotificationSettings role="PROFESSIONAL" muted={user.mutedNotifications} />
       <ChangePasswordForm />

@@ -46,7 +46,7 @@ export default async function MinhaAgendaPage() {
 
       {appointments.length === 0 && (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
-          <Typography color="text.secondary">Nenhum atendimento nos próximos 14 dias.</Typography>
+          <Typography color="text.secondary">Nada agendado nos próximos 14 dias.</Typography>
         </Paper>
       )}
 

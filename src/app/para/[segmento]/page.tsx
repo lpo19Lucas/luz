@@ -8,8 +8,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTrialDays } from "@/lib/plans";
 import { absoluteUrl } from "@/lib/appUrl";
-import { availableSegments, getSegment, isSegmentSlug } from "@/lib/segments";
+import { availableSegments, cap, getSegment, isSegmentSlug } from "@/lib/segments";
 import LegalFooterLinks from "../../LegalFooterLinks";
+import BrandLogo from "@/components/BrandLogo";
 
 export const revalidate = 300;
 
@@ -42,6 +43,11 @@ export default async function SegmentLandingPage({ params }: { params: Promise<{
   const trialDays = await getTrialDays();
   const { landing } = seg;
   const signupHref = `/cadastro?segmento=${seg.slug}`;
+  // Dores comuns são escritas com "cliente"; troca pelo vocabulário do segmento (aluno, paciente, tutor).
+  const local = (text: string) =>
+    seg.vocab.client === "cliente"
+      ? text
+      : text.replace(/bClientesb/g, cap(seg.vocab.clients)).replace(/bclientesb/g, seg.vocab.clients).replace(/bClienteb/g, cap(seg.vocab.client)).replace(/bclienteb/g, seg.vocab.client);
   const others = availableSegments().filter((o) => o.slug !== seg.slug);
 
   const jsonLd = {
@@ -49,7 +55,7 @@ export default async function SegmentLandingPage({ params }: { params: Promise<{
     "@graph": [
       {
         "@type": "SoftwareApplication",
-        name: `Luz — ${landing.title}`,
+        name: `DLJ Innovations — ${landing.title}`,
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         url: absoluteUrl(`/para/${seg.slug}`),
@@ -85,9 +91,9 @@ export default async function SegmentLandingPage({ params }: { params: Promise<{
           borderColor: "divider",
         }}
       >
-        <Typography component={Link} href="/" sx={{ fontWeight: 700, fontSize: 17, color: "text.primary", textDecoration: "none" }}>
-          Luz
-        </Typography>
+        <Link href="/" style={{ textDecoration: "none" }} aria-label="DLJ Innovations">
+          <BrandLogo />
+        </Link>
         <Button component={Link} href={signupHref} variant="contained" size="small">
           Criar grátis
         </Button>
@@ -124,13 +130,13 @@ export default async function SegmentLandingPage({ params }: { params: Promise<{
           }}
         >
           {landing.pains.map((pain) => (
-            <Box key={pain.title} sx={{ bgcolor: "#fff", border: "1px solid", borderColor: "divider", borderRadius: 4, p: 3 }}>
+            <Box key={local(pain.title)} sx={{ bgcolor: "background.paper", border: "1px solid", borderColor: "divider", borderRadius: 4, p: 3 }}>
               <Typography sx={{ fontSize: 28, mb: 1 }} aria-hidden>
                 {pain.icon}
               </Typography>
-              <Typography sx={{ fontWeight: 600, mb: 0.75 }}>{pain.title}</Typography>
+              <Typography sx={{ fontWeight: 600, mb: 0.75 }}>{local(pain.title)}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {pain.body}
+                {local(pain.body)}
               </Typography>
             </Box>
           ))}
@@ -156,10 +162,10 @@ export default async function SegmentLandingPage({ params }: { params: Promise<{
           {landing.faq.map((item) => (
             <Accordion key={item.q} disableGutters elevation={0} sx={{ border: "1px solid", borderColor: "divider", mb: 1, borderRadius: 2, "&:before": { display: "none" } }}>
               <AccordionSummary>
-                <Typography sx={{ fontWeight: 600 }}>{item.q}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{local(item.q)}</Typography>
               </AccordionSummary>
               <AccordionDetails>
-                <Typography color="text.secondary">{item.a}</Typography>
+                <Typography color="text.secondary">{local(item.a)}</Typography>
               </AccordionDetails>
             </Accordion>
           ))}
@@ -174,7 +180,7 @@ export default async function SegmentLandingPage({ params }: { params: Promise<{
 
       <Box sx={{ px: { xs: 2.5, md: 6 }, py: 4, borderTop: "1px solid", borderColor: "divider", textAlign: "center" }}>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-          A Luz também atende:
+          A DLJ Innovations também atende:
         </Typography>
         <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1.5} justifyContent="center" sx={{ mb: 3 }}>
           {others.map((o) => (

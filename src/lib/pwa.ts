@@ -1,16 +1,19 @@
 /**
  * PWA (Fase E1): dois apps instaláveis sobre o mesmo site.
  *
- * - App do dono/profissional ("Luz"): abre na /agenda.
+ * - App do dono/profissional ("DLJ Innovations"): abre na /agenda.
  * - App do estabelecimento (pro cliente): nome e cores do salão, abre na
  *   página pública dele e fica restrito a ela (scope /slug).
  *
  * Um service worker só (/sw.js, escopo "/") atende os dois — ver public/sw.js.
  */
 
-export const LUZ_NAVY = "#1B2A4A";
-export const LUZ_GOLD = "#D4AF37";
-export const LUZ_CREAM = "#FAF7F2";
+/** Cores-padrão da página/app de um negócio que não escolheu as próprias (tema claro). */
+export const SALON_DEFAULT_NAVY = "#1B2A4A";
+export const SALON_DEFAULT_GOLD = "#D4AF37";
+export const SALON_DEFAULT_CREAM = "#FAF7F2";
+
+import { BRAND_COLORS } from "@/lib/brand";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
@@ -46,21 +49,21 @@ export function shortName(name: string) {
 export function buildOwnerManifest(): WebManifest {
   return {
     id: "/agenda",
-    name: "Luz — Painel do salão",
-    short_name: "Luz",
+    name: "DLJ Innovations — Painel",
+    short_name: "DLJ",
     description: "Agenda, clientes e notificações do seu estabelecimento.",
     start_url: "/agenda?source=pwa",
     scope: "/",
     display: "standalone",
-    background_color: LUZ_CREAM,
-    theme_color: LUZ_NAVY,
+    background_color: BRAND_COLORS.night,
+    theme_color: BRAND_COLORS.night,
     lang: "pt-BR",
-    icons: icons("app=luz"),
+    icons: icons("app=dlj"),
   };
 }
 
 export function buildSalonManifest(salon: { name: string; slug: string; primaryColor: string | null }): WebManifest {
-  const color = salon.primaryColor && HEX.test(salon.primaryColor) ? salon.primaryColor : LUZ_NAVY;
+  const color = salon.primaryColor && HEX.test(salon.primaryColor) ? salon.primaryColor : SALON_DEFAULT_NAVY;
   return {
     id: `/${salon.slug}`,
     name: salon.name,
@@ -69,7 +72,7 @@ export function buildSalonManifest(salon: { name: string; slug: string; primaryC
     start_url: `/${salon.slug}?source=pwa`,
     scope: `/${salon.slug}`,
     display: "standalone",
-    background_color: LUZ_CREAM,
+    background_color: SALON_DEFAULT_CREAM,
     theme_color: color,
     lang: "pt-BR",
     icons: icons(`salon=${encodeURIComponent(salon.slug)}`),
@@ -84,8 +87,8 @@ export function iconInitial(name: string) {
 
 export function iconColors(primaryColor: string | null | undefined, accentColor: string | null | undefined) {
   return {
-    background: primaryColor && HEX.test(primaryColor) ? primaryColor : LUZ_NAVY,
-    foreground: accentColor && HEX.test(accentColor) ? accentColor : LUZ_GOLD,
+    background: primaryColor && HEX.test(primaryColor) ? primaryColor : SALON_DEFAULT_NAVY,
+    foreground: accentColor && HEX.test(accentColor) ? accentColor : SALON_DEFAULT_GOLD,
   };
 }
 

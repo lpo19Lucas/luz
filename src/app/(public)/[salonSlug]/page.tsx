@@ -19,7 +19,7 @@ import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 import ReviewsCarousel from "./ReviewsCarousel";
 import LegalFooterLinks from "../../LegalFooterLinks";
-import { getSegment } from "@/lib/segments";
+import { getSegment, cap } from "@/lib/segments";
 
 const GALLERY_GRADIENTS = [
   "linear-gradient(160deg,#E8C9A0,#D4AF37)",
@@ -101,6 +101,7 @@ export default async function BookingPage({
     },
   });
   if (!salon) notFound();
+  const vocab = getSegment(salon.segment).vocab;
 
   // F12: link público só abre pra clientes depois de publicado. F6: some
   // depois da carência por falta de pagamento. O dono logado continua vendo
@@ -308,7 +309,7 @@ export default async function BookingPage({
                   <Box>
                     <Typography sx={{ fontSize: 24, fontWeight: 700 }}>{salon.professionals.length}</Typography>
                     <Typography variant="caption" color="text.secondary">
-                      profission{salon.professionals.length === 1 ? "al" : "ais"}
+                      {salon.professionals.length === 1 ? vocab.professional : vocab.professionals}
                     </Typography>
                   </Box>
                 )}
@@ -429,7 +430,7 @@ export default async function BookingPage({
         {(!salon.publishedAt || subscriptionBlocked) && isOwnerPreview && (
           <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 }, pb: 2 }}>
             <Alert severity="warning" sx={{ borderRadius: 2 }}>
-              Prévia: só você (logado) está vendo essa página — clientes veem &ldquo;agenda
+              Prévia: só você (logado) está vendo essa página — {vocab.clients} veem &ldquo;agenda
               indisponível&rdquo;.{" "}
               {!salon.publishedAt ? (
                 <>
@@ -588,7 +589,7 @@ export default async function BookingPage({
                       mb: 3.5,
                     }}
                   >
-                    Profissionais que você escolhe
+                    {cap(vocab.professionals)} que você escolhe
                   </Typography>
                   <Stack direction="row" spacing={2.5} sx={{ overflowX: "auto", pb: 1 }}>
                     {salon.professionals.map((p) => (
@@ -816,7 +817,7 @@ export default async function BookingPage({
 
             <Box sx={{ px: 2.5, py: 3, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>
               <Typography variant="caption" color="text.secondary">
-                {salon.name} · agendamento online pela Luz
+                {salon.name} · agendamento online pela DLJ Innovations
               </Typography>
               <Box sx={{ mt: 1 }}>
                 <LegalFooterLinks />

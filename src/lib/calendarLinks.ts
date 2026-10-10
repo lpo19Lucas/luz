@@ -112,7 +112,7 @@ export function buildIcs(ev: CalendarEvent, now: Date = new Date()) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Luz//Agendamento//PT-BR",
+    "PRODID:-//DLJ Innovations//Agendamento//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

@@ -37,7 +37,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
     return { error: "E-mail ou senha inválidos." };
   }
   if (user.disabledAt) {
-    return { error: "Esta conta está bloqueada. Fale com o suporte da Luz." };
+    return { error: "Esta conta está bloqueada. Fale com o suporte da DLJ Innovations." };
   }
 
   await createSession(user.id);

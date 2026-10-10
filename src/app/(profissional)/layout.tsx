@@ -11,8 +11,8 @@ import { needsTermsAcceptance } from "@/lib/termsAcceptance";
 
 export const metadata: Metadata = {
   manifest: "/app.webmanifest",
-  appleWebApp: { capable: true, title: "Luz", statusBarStyle: "black-translucent" },
-  icons: { apple: "/pwa-icon?app=luz&size=192" },
+  appleWebApp: { capable: true, title: "DLJ Innovations", statusBarStyle: "black-translucent" },
+  icons: { apple: "/dlj-icon-192.png" },
   robots: { index: false },
 };
 
@@ -59,7 +59,7 @@ export default async function ProfessionalLayout({ children }: { children: React
             }
           >
             Leia os <Link href="/termos" target="_blank">Termos de Uso</Link> e a{" "}
-            <Link href="/privacidade" target="_blank">Política de Privacidade</Link> da Luz e confirme o aceite.
+            <Link href="/privacidade" target="_blank">Política de Privacidade</Link> da DLJ Innovations e confirme o aceite.
           </Alert>
         )}
         {children}

@@ -21,11 +21,13 @@ function Result({ state }: { state: AccessFormState }) {
 export default function ProfessionalAccess({
   professionalId,
   professionalName,
+  professionalWord = "profissional",
   access,
   phone,
 }: {
   professionalId: string;
   professionalName: string;
+  professionalWord?: string;
   access: { email: string; activated: boolean } | null;
   phone: string | null;
 }) {
@@ -35,12 +37,12 @@ export default function ProfessionalAccess({
   return (
     <Paper elevation={1} sx={{ p: 2.5, maxWidth: 520, mt: 3 }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 0.5 }}>
-        Acesso do profissional
+        Acesso do {professionalWord}
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Com acesso, {professionalName} entra com e-mail e senha próprios, vê só a própria agenda, marca atendimentos
-        como concluídos e recebe os próprios agendamentos no celular. Não vê clientes, valores nem configurações do
-        salão.
+        Com acesso, {professionalName} entra com e-mail e senha próprios, vê só a própria agenda, marca os atendimentos
+        como concluídos e recebe os próprios agendamentos no celular. Não vê a lista de clientes, valores nem configurações do
+        negócio.
       </Typography>
 
       {access ? (
@@ -69,7 +71,7 @@ export default function ProfessionalAccess({
       ) : (
         <Stack component="form" action={grant} spacing={1.5}>
           <input type="hidden" name="professionalId" value={professionalId} />
-          <TextField name="email" type="email" size="small" label="E-mail do profissional" required />
+          <TextField name="email" type="email" size="small" label={`E-mail (${professionalWord})`} required />
           <TextField name="phone" size="small" label="WhatsApp (pra enviar o convite)" defaultValue={phone ?? ""} />
           <Button type="submit" variant="contained" disabled={granting} sx={{ alignSelf: "flex-start" }}>
             {granting ? "Criando..." : "Dar acesso e gerar convite"}

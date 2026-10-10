@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { getAppUrl } from "@/lib/appUrl";
 
 /**
- * F15 (AEO): resumo da Luz pra agentes de IA que leem llms.txt — mesma ideia
+ * F15 (AEO): resumo da DLJ Innovations pra agentes de IA que leem llms.txt — mesma ideia
  * do robots.txt, mas pra motores de busca baseados em LLM.
  */
 export async function GET() {
   const appUrl = getAppUrl();
-  const body = `# Luz
+  const body = `# DLJ Innovations
 
 > Plataforma de agendamento online para salões e barbearias. Cada salão
 > cadastrado ganha um link público (${appUrl}/<slug-do-salao>) onde o

@@ -8,8 +8,8 @@ import {
   iosVersion,
   iosSupportsWebPush,
   installHelp,
-  LUZ_NAVY,
-  LUZ_GOLD,
+  SALON_DEFAULT_NAVY,
+  SALON_DEFAULT_GOLD,
 } from "./pwa";
 
 const IPHONE_17 =
@@ -39,8 +39,8 @@ describe("manifests", () => {
     expect(m.icons[0].src).toBe("/pwa-icon?salon=studio-beleza-nova&size=192");
   });
 
-  it("cor inválida cai no navy da Luz", () => {
-    expect(buildSalonManifest({ name: "X", slug: "x", primaryColor: "vermelho" }).theme_color).toBe(LUZ_NAVY);
+  it("cor inválida cai no navy padrão", () => {
+    expect(buildSalonManifest({ name: "X", slug: "x", primaryColor: "vermelho" }).theme_color).toBe(SALON_DEFAULT_NAVY);
   });
 });
 
@@ -59,7 +59,7 @@ describe("helpers de ícone", () => {
 
   it("iconColors com fallback", () => {
     expect(iconColors("#112233", "#445566")).toEqual({ background: "#112233", foreground: "#445566" });
-    expect(iconColors(null, "x")).toEqual({ background: LUZ_NAVY, foreground: LUZ_GOLD });
+    expect(iconColors(null, "x")).toEqual({ background: SALON_DEFAULT_NAVY, foreground: SALON_DEFAULT_GOLD });
   });
 });
 
@@ -102,5 +102,15 @@ describe("installHelp", () => {
     expect(installHelp(ua.firefox).steps[0]).toContain("não instala");
     expect(installHelp(ua.macSafari, 0).platform).toBe("Safari (Mac)");
     expect(installHelp(ua.macSafari, 5).platform).toBe("iPhone"); // iPad em modo desktop
+  });
+});
+
+describe("identidade DLJ Innovations", () => {
+  it("o app do painel usa o nome e as cores da marca", () => {
+    const m = buildOwnerManifest();
+    expect(m.name).toContain("DLJ Innovations");
+    expect(m.short_name).toBe("DLJ");
+    expect(m.theme_color).toBe("#0A1730");
+    expect(m.icons.every((i) => i.src.includes("app=dlj"))).toBe(true);
   });
 });

@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Paper, Typography, Stack, TextField, MenuItem, Button } from "@mui/material";
 import { createAgendaBlockAction } from "@/lib/actions/agendaBlock";
 import { WEEKDAYS } from "@/lib/weekdays";
+import { cap, getSegment } from "@/lib/segments";
 
 type Professional = { id: string; name: string };
 
-export default function AgendaBlockForm({ professionals }: { professionals: Professional[] }) {
+export default function AgendaBlockForm({ professionals, segment }: { professionals: Professional[]; segment: string }) {
+  const { vocab } = getSegment(segment);
   const [recurrence, setRecurrence] = useState<"ONCE" | "DAILY" | "WEEKLY">("ONCE");
 
   return (
@@ -16,8 +18,8 @@ export default function AgendaBlockForm({ professionals }: { professionals: Prof
         Novo bloqueio
       </Typography>
       <Stack component="form" action={createAgendaBlockAction} spacing={1.5}>
-        <TextField select name="professionalId" label="Profissional" size="small" defaultValue="">
-          <MenuItem value="">Salão inteiro (feriado, fechamento)</MenuItem>
+        <TextField select name="professionalId" label={cap(vocab.professional)} size="small" defaultValue="">
+          <MenuItem value="">{cap(vocab.business)} inteir{vocab.businessGender === "f" ? "a" : "o"} (feriado, fechamento)</MenuItem>
           {professionals.map((p) => (
             <MenuItem key={p.id} value={p.id}>
               {p.name}

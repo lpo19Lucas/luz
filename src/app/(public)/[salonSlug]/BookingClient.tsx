@@ -28,6 +28,7 @@ import AddToCalendarButtons, { type CalendarLinks } from "./AddToCalendarButtons
 import type { AssetKind, AssetSize } from "@prisma/client";
 import AssetFields, { EMPTY_ASSET, type AssetFormValue } from "@/components/AssetFields";
 import { priceForSize } from "@/lib/clientAssets";
+import { cap, getSegment, grammar } from "@/lib/segments";
 import InstallAppPrompt from "../../InstallAppPrompt";
 import EnableNotifications from "../../EnableNotifications";
 
@@ -40,7 +41,7 @@ type Service = {
   sizePrices?: Partial<Record<AssetSize, number>>;
   imageUrl: string | null;
 };
-type SalonInfo = { name: string; professionals: Professional[]; services: Service[]; assetKind?: AssetKind | null };
+type SalonInfo = { name: string; segment?: string; professionals: Professional[]; services: Service[]; assetKind?: AssetKind | null };
 
 type MyAppointment = {
   accessToken: string;
@@ -77,6 +78,8 @@ function todayISODate() {
 export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   const [salon, setSalon] = useState<SalonInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const { vocab } = getSegment(salon?.segment);
+  const apptG = grammar(vocab.appointmentGender);
 
   const [professionalId, setProfessionalId] = useState<string | null>(null);
   const [serviceId, setServiceId] = useState<string | null>(null);
@@ -227,7 +230,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   if (manageUrl) {
     return (
       <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-        <Header salonName={salon.name} />
+        <Header salonName={salon.name} professionalWord={vocab.professional} />
         <Box sx={{ maxWidth: 480, mx: "auto", p: 3, textAlign: "center" }}>
           <Box
             sx={{
@@ -272,7 +275,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
               <EnableNotifications
                 accessToken={createdToken}
                 title="Receber lembrete do seu horário"
-                description="Avisamos no dia do atendimento e pedimos a confirmação de presença na véspera, direto no seu celular."
+                description={`Avisamos no dia ${apptG.of} ${vocab.appointment} e pedimos a confirmação de presença na véspera, direto no seu celular.`}
               />
             </Box>
           )}
@@ -331,7 +334,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
           </Section>
         )}
 
-        <Section title="Profissional">
+        <Section title={cap(vocab.professional)}>
           <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap", gap: 1.5 }}>
             {salon.professionals.map((p) => {
               const selected = professionalId === p.id;
@@ -511,7 +514,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
   );
 }
 
-function Header({ salonName }: { salonName: string }) {
+function Header({ salonName, professionalWord }: { salonName: string; professionalWord: string }) {
   return (
     <AppBar
       position="static"
@@ -523,7 +526,7 @@ function Header({ salonName }: { salonName: string }) {
           {salonName}
         </Typography>
         <Typography variant="caption" sx={{ color: "#D4AF37", fontWeight: 600 }}>
-          Escolha o profissional, serviço e horário
+          Escolha {professionalWord}, serviço e horário
         </Typography>
       </Toolbar>
     </AppBar>

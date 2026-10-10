@@ -30,6 +30,7 @@ export async function GET(
     endAt: appointment.endAt.toISOString(),
     salonName: appointment.salon.name,
     salonSlug: appointment.salon.slug,
+    segment: appointment.salon.segment,
     professionalId: appointment.professionalId,
     professionalName: appointment.professional.name,
     serviceId: appointment.serviceId,

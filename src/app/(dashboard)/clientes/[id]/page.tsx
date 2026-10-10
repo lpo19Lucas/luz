@@ -16,6 +16,7 @@ import {
 } from "@/lib/actions/package";
 import { getClientPackages } from "@/lib/packages";
 import { assetSummary } from "@/lib/clientAssets";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -32,6 +33,8 @@ const STATUS_LABEL: Record<string, string> = {
 export default async function ClienteDetalhePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const client = await prisma.client.findFirst({ where: { id, salonId: salon.id } });
   if (!client) notFound();
@@ -57,7 +60,7 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
   return (
     <Box sx={{ maxWidth: 760 }}>
       <Button component={Link} href="/clientes" size="small" sx={{ mb: 2 }}>
-        ← Voltar pra clientes
+        ← Voltar pra {vocab.clients}
       </Button>
 
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
@@ -104,7 +107,7 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
 
       <Paper elevation={1} sx={{ p: 2.5, mb: 3 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
-          {client.bannedAt ? "Cliente banido" : "Banir cliente"}
+          {client.bannedAt ? `${cap(vocab.client)} banido` : `Banir ${vocab.client}`}
         </Typography>
         {client.bannedAt ? (
           <Stack spacing={1.5} alignItems="flex-start">
@@ -138,7 +141,7 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
             multiline
             minRows={3}
             defaultValue={client.notes ?? ""}
-            placeholder="Preferências, observações sobre o cliente..."
+            placeholder={`Preferências, observações sobre ${vocab.client === "cliente" ? "o cliente" : `o ${vocab.client}`}...`}
           />
           <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
             Salvar
@@ -148,7 +151,7 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
 
       <Paper elevation={1} sx={{ mb: 3 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, p: 2, pb: 0 }}>
-          Pacotes do cliente
+          Pacotes {`do ${vocab.client}`}
         </Typography>
         {clientPackages.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">

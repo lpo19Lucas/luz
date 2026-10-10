@@ -1,4 +1,4 @@
-// F14: landing page da Luz — hoje a rota "/" não tinha nenhuma página de
+// F14: landing page da DLJ Innovations — hoje a rota "/" não tinha nenhuma página de
 // venda, só o dashboard e o link público de cada salão.
 // Fase G: mesmo tratamento visual do redesign (nav com blur, cards com
 // ícone/hover, plano em destaque, FAQ em cards) aplicado aqui também.
@@ -9,12 +9,13 @@ import { getPaidPlans, getTrialDays, type PlanInfo } from "@/lib/plans";
 import { whatsappLink } from "@/lib/phone";
 import { absoluteUrl } from "@/lib/appUrl";
 import LegalFooterLinks from "./LegalFooterLinks";
+import BrandLogo from "@/components/BrandLogo";
 import { availableSegments } from "@/lib/segments";
 
 export const metadata: Metadata = {
-  title: { absolute: "Luz — Agendamento online para salões e barbearias" },
+  title: { absolute: "DLJ Innovations — Agendamento online para negócios de serviços" },
   description:
-    "A Luz é a plataforma de agendamento para salões e barbearias: link público pra cliente marcar sozinho, agenda com confirmação de presença, bloqueios, histórico, métricas e muito mais. 50 dias grátis.",
+    "A DLJ Innovations é a plataforma de agendamento online para barbearias, salões, estúdios, clínicas, aulas e mais: link público pro cliente marcar sozinho, agenda com confirmação de presença, bloqueios, histórico, métricas e muito mais. 50 dias grátis.",
 };
 
 const PAINS = [
@@ -36,8 +37,8 @@ const PAINS = [
 ];
 
 const STEPS = [
-  { title: "Cadastre seu salão", body: "Nome, serviços e profissionais com horário — leva poucos minutos." },
-  { title: "Publique seu link", body: "Um link só seu (luz.app/seu-salao) pra compartilhar no Instagram, WhatsApp, onde quiser." },
+  { title: "Cadastre seu negócio", body: "Escolha seu segmento, confirme os serviços e a equipe com horário — leva poucos minutos." },
+  { title: "Publique seu link", body: "Um link só seu pra compartilhar no Instagram, WhatsApp, onde quiser." },
   { title: "Receba agendamentos", body: "Cliente escolhe profissional, serviço e horário livre — sem mensagem de ida e volta." },
 ];
 
@@ -64,8 +65,8 @@ const FAQ = [
     a: "Sim, não tem fidelidade. A cobrança é manual via PIX, sem cartão salvo nem renovação automática forçada.",
   },
   {
-    q: "Funciona pra salão de beleza ou só barbearia?",
-    a: "Funciona pros dois e pra vários outros negócios de agendamento por horário: manicure, lash designer, maquiadora, esteticista, personal trainer, professor particular e mais. No cadastro você escolhe o seu tipo de negócio e a Luz já usa as palavras e os serviços de exemplo dele.",
+    q: "Funciona pro meu tipo de negócio?",
+    a: "Funciona pros dois e pra vários outros negócios de agendamento por horário: manicure, lash designer, maquiadora, esteticista, personal trainer, professor particular e mais. No cadastro você escolhe o seu tipo de negócio e a DLJ Innovations já usa as palavras e os serviços de exemplo dele.",
   },
 ];
 
@@ -79,12 +80,12 @@ function buildJsonLd(plans: PlanInfo[]) {
     "@graph": [
       {
         "@type": "Organization",
-        name: "Luz",
+        name: "DLJ Innovations",
         url: absoluteUrl("/"),
       },
       {
         "@type": "SoftwareApplication",
-        name: "Luz",
+        name: "DLJ Innovations",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         offers: plans.map((plan) => ({
@@ -133,31 +134,12 @@ export default async function LandingPage() {
           px: { xs: 2.5, md: 6 },
           py: 2,
           backdropFilter: "blur(10px)",
-          bgcolor: "rgba(250,247,242,.85)",
+          bgcolor: "rgba(10,23,48,.85)",
           borderBottom: "1px solid",
           borderColor: "divider",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-          <Box
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: "10px",
-              bgcolor: "primary.main",
-              color: "secondary.main",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "var(--font-display)",
-              fontWeight: 700,
-              flexShrink: 0,
-            }}
-          >
-            L
-          </Box>
-          <Typography sx={{ fontWeight: 700, fontSize: 17 }}>Luz</Typography>
-        </Box>
+        <BrandLogo />
         <Stack direction="row" spacing={3.5} sx={{ display: { xs: "none", sm: "flex" }, fontSize: 14 }}>
           <Box component="a" href="#planos" sx={{ color: "text.secondary", textDecoration: "none" }}>
             Planos
@@ -212,7 +194,7 @@ export default async function LandingPage() {
             Sua agenda, <Box component="span" sx={{ color: "secondary.dark" }}>sempre aberta</Box>
           </Typography>
           <Typography color="text.secondary" sx={{ fontSize: 18, lineHeight: 1.6, mb: 4.5, maxWidth: 560, mx: "auto" }}>
-            A Luz é a plataforma de agendamento online pro seu salão ou barbearia. Cliente marca
+            A DLJ Innovations é a plataforma de agendamento online pro seu negócio: barbearia, salão, estúdio, consultório, aulas, pet shop e mais. Cliente marca
             sozinho, você gerencia tudo num painel só.
           </Typography>
           <Stack direction="row" spacing={1.75} justifyContent="center" sx={{ flexWrap: "wrap", gap: 1.75 }}>
@@ -221,13 +203,13 @@ export default async function LandingPage() {
               href="/cadastro"
               variant="contained"
               size="large"
-              sx={{ bgcolor: "secondary.main", color: "primary.main", py: 1.75, px: 3.5, fontSize: 15 }}
+              sx={{ bgcolor: "secondary.main", color: "secondary.contrastText", py: 1.75, px: 3.5, fontSize: 15 }}
             >
-              Criar meu salão grátis
+              Criar minha agenda grátis
             </Button>
             {salesPhone && (
               <Button
-                href={whatsappLink(salesPhone, "Olá! Quero saber mais sobre a Luz.")}
+                href={whatsappLink(salesPhone, "Olá! Quero saber mais sobre a DLJ Innovations.")}
                 target="_blank"
                 rel="noreferrer"
                 variant="outlined"
@@ -247,14 +229,14 @@ export default async function LandingPage() {
           component="h2"
           sx={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: { xs: 26, md: 30 }, textAlign: "center", mb: 4 }}
         >
-          Problemas que todo salão conhece
+          Problemas que todo negócio de agenda conhece
         </Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" }, gap: 2.5 }}>
           {PAINS.map((p) => (
             <Box
               key={p.title}
               sx={{
-                bgcolor: "#fff",
+                bgcolor: "background.paper",
                 border: "1px solid",
                 borderColor: "divider",
                 borderRadius: 4,
@@ -268,7 +250,7 @@ export default async function LandingPage() {
                   width: 42,
                   height: 42,
                   borderRadius: 2.5,
-                  bgcolor: "#FAF1D8",
+                  bgcolor: "rgba(58,166,255,.14)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -286,7 +268,7 @@ export default async function LandingPage() {
       </Box>
 
       {/* Como funciona */}
-      <Box sx={{ bgcolor: "primary.main", py: { xs: 7, md: 9 } }}>
+      <Box sx={{ bgcolor: "secondary.contrastText", py: { xs: 7, md: 9 } }}>
         <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 } }}>
           <Typography
             component="h2"
@@ -311,7 +293,7 @@ export default async function LandingPage() {
                     height: 36,
                     borderRadius: "50%",
                     bgcolor: "secondary.main",
-                    color: "primary.main",
+                    color: "secondary.contrastText",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -336,7 +318,7 @@ export default async function LandingPage() {
           component="h2"
           sx={{ fontFamily: "var(--font-display)", fontWeight: 600, fontSize: { xs: 26, md: 30 }, textAlign: "center", mb: 4 }}
         >
-          Tudo que seu salão precisa
+          Tudo que seu negócio precisa
         </Typography>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(3, 1fr)" }, gap: 2 }}>
           {FEATURES.map((f) => (
@@ -346,7 +328,7 @@ export default async function LandingPage() {
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 1.5,
-                bgcolor: "#fff",
+                bgcolor: "background.paper",
                 border: "1px solid",
                 borderColor: "divider",
                 borderRadius: 3,
@@ -378,7 +360,7 @@ export default async function LandingPage() {
       </Box>
 
       {/* Planos */}
-      <Box id="planos" sx={{ bgcolor: "#fff", borderTop: "1px solid", borderBottom: "1px solid", borderColor: "divider", py: { xs: 7, md: 9 } }}>
+      <Box id="planos" sx={{ bgcolor: "background.paper", borderTop: "1px solid", borderBottom: "1px solid", borderColor: "divider", py: { xs: 7, md: 9 } }}>
         <Box sx={{ maxWidth: 1180, mx: "auto", px: { xs: 2.5, md: 6 } }}>
           <Typography
             component="h2"
@@ -421,7 +403,7 @@ export default async function LandingPage() {
                         left: "50%",
                         transform: "translateX(-50%)",
                         bgcolor: "secondary.main",
-                        color: "primary.main",
+                        color: "secondary.contrastText",
                         fontSize: 11,
                         fontWeight: 700,
                         px: 1.5,
@@ -443,7 +425,7 @@ export default async function LandingPage() {
                       fontFamily: "var(--font-display)",
                       fontWeight: 700,
                       fontSize: 30,
-                      color: highlighted ? "#FAF7F2" : "primary.main",
+                      color: highlighted ? "#E9EFFA" : "secondary.main",
                       my: 0.5,
                     }}
                   >
@@ -462,7 +444,7 @@ export default async function LandingPage() {
                     variant={highlighted ? "contained" : "outlined"}
                     sx={
                       highlighted
-                        ? { bgcolor: "secondary.main", color: "primary.main", "&:hover": { bgcolor: "secondary.dark" } }
+                        ? { bgcolor: "secondary.main", color: "secondary.contrastText", "&:hover": { bgcolor: "secondary.dark" } }
                         : { borderColor: "primary.main" }
                     }
                   >
@@ -543,14 +525,14 @@ export default async function LandingPage() {
           href="/cadastro"
           variant="contained"
           size="large"
-          sx={{ bgcolor: "secondary.main", color: "primary.main", py: 1.75, px: 4, fontSize: 15, position: "relative" }}
+          sx={{ bgcolor: "secondary.main", color: "secondary.contrastText", py: 1.75, px: 4, fontSize: 15, position: "relative" }}
         >
-          Criar meu salão grátis
+          Criar minha agenda grátis
         </Button>
       </Box>
       <Box id="segmentos" sx={{ py: 6, px: 2.5, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>
         <Typography component="h2" variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
-          Para quem é a Luz
+          Para quem é a DLJ Innovations
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 2.5 }}>
           Barbearia, salão, estúdio, aulas e mais. Veja a página do seu tipo de negócio:

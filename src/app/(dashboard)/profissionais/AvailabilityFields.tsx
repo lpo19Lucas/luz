@@ -12,10 +12,13 @@ export function AvailabilityFields({
   services,
   existingAvailability = [],
   existingServiceIds = [],
+  professionalWord = "profissional",
 }: {
   services: ServiceOption[];
   existingAvailability?: AvailabilityRow[];
   existingServiceIds?: string[];
+  /** Vocabulário do segmento: "profissional", "box", "professor"... */
+  professionalWord?: string;
 }) {
   const byWeekday = new Map(existingAvailability.map((a) => [a.weekday, a]));
 
@@ -26,7 +29,7 @@ export function AvailabilityFields({
           Disponibilidade semanal
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: "block" }}>
-          Deixe início e fim em branco nos dias que esse profissional não atende.
+          Deixe início e fim em branco nos dias em que não há atendimento.
         </Typography>
         <Stack spacing={1}>
           {WEEKDAYS.map((day) => {
@@ -56,7 +59,7 @@ export function AvailabilityFields({
 
       <Box sx={{ mb: 2 }}>
         <Typography variant="subtitle2" sx={{ mb: 1 }}>
-          Serviços que esse profissional realiza
+          Serviços de {professionalWord}
         </Typography>
         {services.length === 0 && (
           <Typography variant="body2" color="text.secondary">

@@ -19,6 +19,7 @@ import { signupAction } from "@/lib/actions/auth";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
 import { availableSegments, cap, getSegment, type SegmentSlug } from "@/lib/segments";
 import TermsCheckbox from "../TermsCheckbox";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function CadastroForm({ initialSegment }: { initialSegment?: SegmentSlug }) {
   const [state, formAction, pending] = useActionState(signupAction, undefined);
@@ -39,6 +40,7 @@ export default function CadastroForm({ initialSegment }: { initialSegment?: Segm
       }}
     >
       <Paper elevation={1} sx={{ p: 4, width: "100%", maxWidth: 400 }}>
+        <Box sx={{ mb: 2.5 }}><BrandLogo size={40} /></Box>
         <Typography variant="h5" sx={{ fontWeight: 500, mb: 0.5 }}>
           Criar {vocab.business}
         </Typography>

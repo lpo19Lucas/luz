@@ -50,7 +50,7 @@ export default async function PacotesPage() {
                 · válido {def.validityDays} dias
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 700, color: "primary.main" }}>{formatPrice(def.priceCents)}</Typography>
+            <Typography sx={{ fontWeight: 700, color: "secondary.main" }}>{formatPrice(def.priceCents)}</Typography>
             <Chip label={def.active ? "À venda" : "Inativo"} color={def.active ? "success" : "default"} size="small" />
             <form action={togglePackageDefinitionActiveAction}>
               <input type="hidden" name="id" value={def.id} />
