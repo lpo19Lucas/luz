@@ -12,10 +12,13 @@ export async function signupSalon(page: Page, label: string) {
   const salonName = `Salão E2E ${unique}`;
 
   await page.goto("/cadastro");
-  await page.getByLabel("Nome do salão").fill(salonName);
+  await page.getByLabel(/^Nome d[oa] /).fill(salonName);
   await page.getByLabel("Seu nome").fill("Dono Teste");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(password);
+  // Os specs criam os próprios serviços: sem os de exemplo do segmento.
+  await page.getByRole("checkbox", { name: /serviços de exemplo/i }).uncheck();
+  await page.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await page.getByRole("button", { name: "Criar minha conta" }).click();
   await page.waitForURL("**/inicio");
 
@@ -49,8 +52,11 @@ export async function createProfessionalFullWeek(page: Page, params: { name: str
 /** Publica o salão (F12) e devolve o slug, extraído do link público exibido em /inicio. */
 export async function publishSalon(page: Page) {
   await page.goto("/inicio");
-  await page.getByRole("button", { name: "Publicar meu link" }).click();
-  await expect(page.getByText("Seu link já está publicado e aberto pra clientes.")).toBeVisible();
+  // Clique antes da hidratação não dispara a server action: repete até o aviso de publicado aparecer.
+  await expect(async () => {
+    await page.getByRole("button", { name: "Publicar meu link" }).click({ timeout: 3000 });
+    await expect(page.getByText(/Seu link já está publicado e aberto/)).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 40_000 });
 
   const href = await page.locator('a[href*="/"]', { hasText: /localhost|http/ }).first().getAttribute("href");
   if (!href) throw new Error("Link público não encontrado em /inicio");

@@ -22,7 +22,7 @@ test("dono cria pacote, cliente reserva pelo link público, dono confirma pagame
   // Cliente (mesma aba, agora navegando pro link público — não precisa de sessão) reserva.
   const clientPhone = `1199988${String(Date.now()).slice(-4)}`;
   await page.goto(`/${slug}`);
-  await expect(page.getByText("Pacotes")).toBeVisible();
+  await expect(page.getByText("Pacotes", { exact: true })).toBeVisible();
   const packageCard = page.locator("form", { has: page.locator('input[name="packageDefinitionId"]') });
   await packageCard.getByLabel("Nome").fill("Cliente Pacote");
   await packageCard.getByLabel("Telefone").fill(clientPhone);
@@ -32,6 +32,7 @@ test("dono cria pacote, cliente reserva pelo link público, dono confirma pagame
   // Dono confirma o pagamento em /clientes/[id].
   await page.goto("/clientes");
   await page.getByRole("link", { name: "Cliente Pacote" }).click();
+  await page.waitForURL(/\/clientes\/[^/]+$/, { timeout: 60_000 }); // dev compila a rota na primeira visita
   await expect(page.getByText("Aguardando pagamento")).toBeVisible();
   await page.getByRole("button", { name: "Confirmar pagamento" }).click();
   await expect(page.getByText("Ativo")).toBeVisible();
