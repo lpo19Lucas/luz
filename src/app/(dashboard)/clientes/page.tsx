@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getAllClientStats } from "@/lib/clientStats";
 import { formatPhone, whatsappLink } from "@/lib/phone";
 import { formatSalonDate } from "@/lib/timezone";
+import { cap, getSegment } from "@/lib/segments";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -36,7 +37,7 @@ export default async function ClientesPage({
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
-        Clientes
+        {cap(getSegment(salon.segment).vocab.clients)}
       </Typography>
 
       <Paper elevation={1} sx={{ p: 2, mb: 2 }}>

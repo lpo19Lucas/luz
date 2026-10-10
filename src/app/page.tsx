@@ -2,13 +2,14 @@
 // venda, só o dashboard e o link público de cada salão.
 // Fase G: mesmo tratamento visual do redesign (nav com blur, cards com
 // ícone/hover, plano em destaque, FAQ em cards) aplicado aqui também.
-import { Box, Typography, Stack, Button, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import { Box, Typography, Stack, Button, Chip, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPaidPlans, getTrialDays, type PlanInfo } from "@/lib/plans";
 import { whatsappLink } from "@/lib/phone";
 import { absoluteUrl } from "@/lib/appUrl";
 import LegalFooterLinks from "./LegalFooterLinks";
+import { availableSegments } from "@/lib/segments";
 
 export const metadata: Metadata = {
   title: { absolute: "Luz — Agendamento online para salões e barbearias" },
@@ -64,7 +65,7 @@ const FAQ = [
   },
   {
     q: "Funciona pra salão de beleza ou só barbearia?",
-    a: "O MVP nasceu pensando em barbearias, mas o cadastro de serviços e profissionais é livre — funciona pra qualquer negócio de agendamento por horário.",
+    a: "Funciona pros dois e pra vários outros negócios de agendamento por horário: manicure, lash designer, maquiadora, esteticista, personal trainer, professor particular e mais. No cadastro você escolhe o seu tipo de negócio e a Luz já usa as palavras e os serviços de exemplo dele.",
   },
 ];
 
@@ -546,6 +547,19 @@ export default async function LandingPage() {
         >
           Criar meu salão grátis
         </Button>
+      </Box>
+      <Box id="segmentos" sx={{ py: 6, px: 2.5, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>
+        <Typography component="h2" variant="h5" sx={{ fontWeight: 600, mb: 0.5 }}>
+          Para quem é a Luz
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 2.5 }}>
+          Barbearia, salão, estúdio, aulas e mais. Veja a página do seu tipo de negócio:
+        </Typography>
+        <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} justifyContent="center" sx={{ maxWidth: 760, mx: "auto" }}>
+          {availableSegments().map((seg) => (
+            <Chip key={seg.slug} component={Link} href={`/para/${seg.slug}`} clickable label={`${seg.emoji} ${seg.label}`} />
+          ))}
+        </Stack>
       </Box>
 
       <Box component="footer" sx={{ py: 3, px: 2.5, textAlign: "center", borderTop: "1px solid", borderColor: "divider" }}>

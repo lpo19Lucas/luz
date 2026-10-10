@@ -8,6 +8,7 @@ import { provisionSalon, ProvisionError } from "@/lib/salonProvisioning";
 import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
 import { MIN_PASSWORD_LENGTH } from "@/lib/passwordPolicy";
 import { getCurrentMember } from "@/lib/currentSalon";
+import { DEFAULT_SEGMENT, getSegment, isSegmentSlug } from "@/lib/segments";
 import { acceptCurrentTerms } from "@/lib/termsAcceptance";
 import { revalidatePath } from "next/cache";
 
@@ -50,6 +51,9 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
   const salonName = String(formData.get("salonName") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
   const acceptTerms = formData.get("acceptTerms") === "on";
+  // Segmento fora da lista (ou ainda não liberado) cai no padrão em vez de travar o cadastro.
+  const segmentRaw = String(formData.get("segment") ?? "");
+  const segment = isSegmentSlug(segmentRaw) && getSegment(segmentRaw).available ? segmentRaw : DEFAULT_SEGMENT;
 
   if (!name || !email || !password || !salonName) {
     return { error: "Preencha todos os campos." };
@@ -69,6 +73,8 @@ export async function signupAction(_prev: FormState, formData: FormData): Promis
       phone,
       passwordHash: await hashPassword(password),
       salonName,
+      segment,
+      withSampleServices: formData.get("withSampleServices") === "on",
       termsAccepted: true,
     });
     userId = user.id;

@@ -1,7 +1,7 @@
 // Página pública de agendamento self-service (spec seção 8.4) + perfil do
 // salão (F3): capa, descrição, endereço, redes sociais e WhatsApp, com o
 // tema aplicando as cores escolhidas pelo dono. F15: metadata/Open Graph e
-// JSON-LD HairSalon pra SEO/AEO.
+// JSON-LD (tipo schema.org por segmento) pra SEO/AEO.
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -19,6 +19,7 @@ import SalonThemeProvider from "./SalonThemeProvider";
 import BookingClient from "./BookingClient";
 import ReviewsCarousel from "./ReviewsCarousel";
 import LegalFooterLinks from "../../LegalFooterLinks";
+import { getSegment } from "@/lib/segments";
 
 const GALLERY_GRADIENTS = [
   "linear-gradient(160deg,#E8C9A0,#D4AF37)",
@@ -31,7 +32,7 @@ const GALLERY_GRADIENTS = [
 
 const HOW_IT_WORKS = [
   { icon: "🔍", title: "Escolha o serviço", desc: "Veja preço e duração antes de marcar." },
-  { icon: "👤", title: "Escolha o profissional", desc: "Ou deixe qualquer um disponível." },
+  { icon: "👤", title: "Escolha quem atende", desc: "Ou deixe qualquer um disponível." },
   { icon: "🗓️", title: "Escolha o horário", desc: "Vagas reais, atualizadas na hora." },
   { icon: "✅", title: "Pronto!", desc: "Confirmação na hora, sem precisar ligar." },
 ];
@@ -66,7 +67,7 @@ export async function generateMetadata({
 
   const title = salon.name;
   const description =
-    salon.description ?? `Agende seu horário no ${salon.name} — escolha profissional, serviço e horário.`;
+    salon.description ?? `Agende seu horário no ${salon.name} — escolha serviço, ${getSegment(salon.segment).vocab.professional} e horário.`;
   const coverUrl = salon.coverImageData
     ? absoluteUrl(`/api/salons/${salon.slug}/cover?v=${salon.coverImageUpdatedAt?.getTime() ?? 0}`)
     : undefined;
@@ -122,7 +123,7 @@ export default async function BookingPage({
     getPublicReviews(salon.id),
   ]);
 
-  const jsonLd = salon.publishedAt ? await buildHairSalonJsonLd(salon, publicReviews) : null;
+  const jsonLd = salon.publishedAt ? await buildSalonJsonLd(salon, publicReviews) : null;
 
   return (
     <>
@@ -831,9 +832,9 @@ export default async function BookingPage({
 
 type SalonWithExtras = NonNullable<Awaited<ReturnType<typeof prisma.salon.findUnique>>>;
 
-/** JSON-LD HairSalon (F15) — endereço, horários (união das disponibilidades
+/** JSON-LD do negócio (F15; tipo schema.org vem do segmento) — endereço, horários (união das disponibilidades
  * de todos os profissionais), serviços oferecidos e redes sociais. */
-async function buildHairSalonJsonLd(
+async function buildSalonJsonLd(
   salon: SalonWithExtras,
   publicReviews: Awaited<ReturnType<typeof getPublicReviews>>
 ) {
@@ -869,7 +870,7 @@ async function buildHairSalonJsonLd(
 
   return {
     "@context": "https://schema.org",
-    "@type": "HairSalon",
+    "@type": getSegment(salon.segment).schemaType,
     name: salon.name,
     url: absoluteUrl(`/${salon.slug}`),
     ...(salon.description ? { description: salon.description } : {}),

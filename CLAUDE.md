@@ -78,3 +78,9 @@ Branch local: **`dev/roadmap-outubro`**, que ainda não foi enviada ao GitHub. A
 - Valores reais das env vars já criadas: `PLATFORM_PIX_KEY`, `NEXT_PUBLIC_SUPPORT_WHATSAPP`, `NEXT_PUBLIC_SALES_WHATSAPP`.
 - Domínio próprio (`APP_URL`).
 - Ordem: Fases E/F antes ou depois do primeiro deploy do roadmap de outubro.
+
+## Multissegmento (S1/S2) — branch `feature/multissegmento`
+- **Fonte única:** `src/lib/segments.ts` (18 segmentos em 3 ondas): vocabulário, serviços de exemplo, tipo schema.org, recursos (`home`, `online`, `clientProfile`, `discreet`, `returnEveryDays` — só configuração por enquanto, implementação em S3/S4) e conteúdo da página de venda. `getSegment()` cai em barbearia pra valor desconhecido.
+- `Salon.segment` (string, default `barbearia`; migration aditiva `20261010000000_salon_segment`). Cadastro (`/cadastro?segmento=`) e cadastro facilitado do admin escolhem o segmento; `provisionSalon({ segment, withSampleServices })` substituiu o antigo `SERVICE_TEMPLATES`.
+- `available: false` esconde o segmento do cadastro e da página `/para/[segmento]` (404, fora do sitemap): onda 3 (saúde — precisa de modo discreto + revisão LGPD) e pet shop/lava-jato (precisam da ficha do pet/veículo e preço por porte, S4). Pra abrir um segmento, vire `available` depois de implementar o que ele exige.
+- Vocabulário aplicado: menu do painel, títulos de Profissionais/Clientes, cadastro, JSON-LD da página pública (tipo por segmento). Telas internas ainda usam "cliente/profissional" em vários textos — trocar aos poucos com `getSegment(salon.segment).vocab` (`cap()` pra início de frase).

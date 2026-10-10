@@ -6,6 +6,7 @@ import { needsTermsAcceptance } from "@/lib/termsAcceptance";
 import { whatsappLink } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+import { cap, getSegment } from "@/lib/segments";
 import DashboardChrome from "./DashboardChrome";
 import type { Metadata } from "next";
 
@@ -15,6 +16,18 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Luz", statusBarStyle: "black-translucent" },
   icons: { apple: "/pwa-icon?app=luz&size=192" },
 };
+
+/** O vocabulário do menu muda com o segmento (profissionais/alunos/pacientes...). */
+function navItemsFor(segmentSlug: string) {
+  const seg = getSegment(segmentSlug);
+  return NAV_ITEMS.map((item) =>
+    item.href === "/profissionais"
+      ? { ...item, label: cap(seg.vocab.professionals), icon: seg.emoji }
+      : item.href === "/clientes"
+        ? { ...item, label: cap(seg.vocab.clients) }
+        : item
+  );
+}
 
 const NAV_ITEMS = [
   { href: "/inicio", label: "Início", icon: "🏠" },
@@ -97,7 +110,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       supportPhone={supportPhone}
       supportHref={supportPhone ? whatsappLink(supportPhone, "Olá! Preciso de ajuda com a Luz.") : null}
       logoutAction={logoutAction}
-      navItems={NAV_ITEMS}
+      navItems={navItemsFor(salon.segment)}
       banners={banners}
     >
       {children}

@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { getAppUrl } from "@/lib/appUrl";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+import { availableSegments } from "@/lib/segments";
 
 /** F15: landing + salões publicados e não bloqueados (F6) — um salão
  * bloqueado por falta de pagamento sai do sitemap, já que o link está
@@ -21,5 +22,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: s.publishedAt ?? undefined,
     }));
 
-  return [{ url: appUrl, changeFrequency: "monthly" as const, priority: 1 }, ...salonEntries];
+  const segmentEntries = availableSegments().map((seg) => ({
+    url: `${appUrl}/para/${seg.slug}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
+  return [{ url: appUrl, changeFrequency: "monthly" as const, priority: 1 }, ...segmentEntries, ...salonEntries];
 }

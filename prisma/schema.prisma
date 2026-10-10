@@ -81,6 +81,12 @@ model Salon {
   slug      String   @unique // usado na URL pública de agendamento
   createdAt DateTime @default(now())
 
+  // Multissegmento (S1): nicho do negócio — define vocabulário, serviços de
+  // exemplo e tipo de negócio no SEO. Valores válidos em src/lib/segments.ts
+  // (string e não enum pra novos segmentos não exigirem migration). Quem já
+  // existia era barbearia.
+  segment String @default("barbearia")
+
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id])
 

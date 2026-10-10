@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateUniqueSalonSlug } from "@/lib/slug";
 import { getTrialDays, planDurationDays } from "@/lib/plans";
 import { LEGAL_VERSION } from "@/lib/legal";
+import { getSegment } from "@/lib/segments";
 
 /**
  * Cria conta + salão + assinatura + config de confirmação de presença numa
@@ -18,21 +19,6 @@ export class ProvisionError extends Error {
   }
 }
 
-export const SERVICE_TEMPLATES = {
-  barbearia: [
-    { name: "Corte masculino", durationMinutes: 30, priceCents: 4000 },
-    { name: "Barba", durationMinutes: 20, priceCents: 3000 },
-    { name: "Corte + barba", durationMinutes: 50, priceCents: 6500 },
-  ],
-  salao: [
-    { name: "Corte feminino", durationMinutes: 60, priceCents: 8000 },
-    { name: "Escova", durationMinutes: 45, priceCents: 5000 },
-    { name: "Manicure", durationMinutes: 40, priceCents: 3500 },
-  ],
-} as const;
-
-export type ServiceTemplate = keyof typeof SERVICE_TEMPLATES;
-
 export type ProvisionInput = {
   ownerName: string;
   email: string;
@@ -46,7 +32,10 @@ export type ProvisionInput = {
   plan?: SubscriptionPlan;
   /** Só pro TRIAL: sobrescreve a duração padrão do teste. */
   trialDays?: number;
-  serviceTemplate?: ServiceTemplate | null;
+  /** Nicho do negócio (src/lib/segments.ts). Valor desconhecido ou vazio = barbearia. */
+  segment?: string | null;
+  /** Cria os serviços de exemplo do segmento (o dono edita depois). */
+  withSampleServices?: boolean;
   /** Registrado em activatedManuallyByEmail quando já nasce com plano pago. */
   activatedBy?: string;
   now?: Date;
@@ -72,7 +61,8 @@ export async function provisionSalon(input: ProvisionInput) {
   const trialDays = input.trialDays ?? (await getTrialDays());
   const paidDays = plan === "TRIAL" ? 0 : await planDurationDays(plan);
   const slug = await generateUniqueSalonSlug(salonName);
-  const services = input.serviceTemplate ? SERVICE_TEMPLATES[input.serviceTemplate] : [];
+  const segment = getSegment(input.segment);
+  const services = input.withSampleServices ? segment.sampleServices : [];
 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
@@ -84,7 +74,7 @@ export async function provisionSalon(input: ProvisionInput) {
         ...(input.termsAccepted ? { termsAcceptedAt: now, termsVersion: LEGAL_VERSION } : {}),
       },
     });
-    const salon = await tx.salon.create({ data: { name: salonName, slug, ownerId: user.id } });
+    const salon = await tx.salon.create({ data: { name: salonName, slug, ownerId: user.id, segment: segment.slug } });
 
     await tx.subscription.create({
       data: {

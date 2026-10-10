@@ -8,9 +8,11 @@ import { createProfessionalAction, deleteProfessionalAction } from "@/lib/action
 import { AvailabilityFields } from "./AvailabilityFields";
 import ImageUploadField from "../ImageUploadField";
 import { storedImageUrl } from "@/lib/storedImages";
+import { getSegment } from "@/lib/segments";
 
 export default async function ProfissionaisPage() {
   const salon = await getCurrentSalon();
+  const { vocab } = getSegment(salon.segment);
   const professionals = await prisma.professional.findMany({
     where: { salonId: salon.id },
     include: { services: true, appointments: { select: { id: true }, take: 1 } },
@@ -22,14 +24,14 @@ export default async function ProfissionaisPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          {professionals.length} profissional(is) cadastrado(s)
+          {professionals.length} {professionals.length === 1 ? vocab.professional : vocab.professionals} cadastrado(s)
         </Typography>
       </Stack>
 
       <Paper elevation={1} sx={{ mb: 3 }}>
         {professionals.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">
-            Nenhum profissional ainda.
+            Ninguém cadastrado ainda.
           </Typography>
         )}
         {professionals.map((prof) => (

@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { createAdminSession, createSession, destroyAdminSession, getAdminSession, hashPassword } from "@/lib/auth";
 import { isRateLimited, recordAuthAttempt, clientIpFromHeaders, RATE_LIMIT_MESSAGE } from "@/lib/rateLimit";
 import { createPasswordToken } from "@/lib/passwordReset";
-import { provisionSalon, ProvisionError, SERVICE_TEMPLATES, type ServiceTemplate } from "@/lib/salonProvisioning";
+import { provisionSalon, ProvisionError } from "@/lib/salonProvisioning";
+import { getSegment, isSegmentSlug } from "@/lib/segments";
 import { whatsappLink } from "@/lib/phone";
 import { salonEndOfDayUTC } from "@/lib/timezone";
 import {
@@ -224,7 +225,8 @@ export async function createSalonAction(_prev: AdminFormState, formData: FormDat
   await requireAdmin();
   const plan = str(formData, "plan") || "TRIAL";
   const trialDaysRaw = str(formData, "trialDays");
-  const template = str(formData, "serviceTemplate");
+  const segmentRaw = str(formData, "segment") || "barbearia";
+  if (!isSegmentSlug(segmentRaw) || !getSegment(segmentRaw).available) return { error: "Segmento inválido." };
   if (!isSubscriptionPlan(plan)) return { error: "Plano inválido." };
   const trialDays = trialDaysRaw ? Number(trialDaysRaw) : undefined;
   if (trialDays !== undefined && (!Number.isInteger(trialDays) || trialDays < 1 || trialDays > 365)) {
@@ -242,7 +244,8 @@ export async function createSalonAction(_prev: AdminFormState, formData: FormDat
       termsAccepted: false,
       plan,
       trialDays,
-      serviceTemplate: template in SERVICE_TEMPLATES ? (template as ServiceTemplate) : null,
+      segment: segmentRaw,
+      withSampleServices: formData.get("withSampleServices") === "on",
       activatedBy: "admin (cadastro facilitado)",
     });
     const { link } = await createPasswordToken(user.id, "INVITE");

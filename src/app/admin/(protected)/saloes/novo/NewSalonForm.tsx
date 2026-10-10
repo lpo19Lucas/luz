@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Paper, Stack, TextField, Button, Alert, MenuItem, Typography, Divider } from "@mui/material";
+import { Paper, Stack, TextField, Button, Alert, MenuItem, Typography, Divider, Checkbox, FormControlLabel } from "@mui/material";
 import Link from "next/link";
 import { createSalonAction } from "@/lib/actions/admin";
+import { DEFAULT_SEGMENT, availableSegments } from "@/lib/segments";
 import GeneratedLink from "../../../../GeneratedLink";
 
 export default function NewSalonForm({ plans, trialDays }: { plans: { value: string; label: string }[]; trialDays: number }) {
@@ -63,11 +64,17 @@ export default function NewSalonForm({ plans, trialDays }: { plans: { value: str
             />
           )}
         </Stack>
-        <TextField name="serviceTemplate" select label="Serviços iniciais" defaultValue="">
-          <MenuItem value="">Nenhum (o dono cadastra)</MenuItem>
-          <MenuItem value="barbearia">Barbearia (corte, barba, corte + barba)</MenuItem>
-          <MenuItem value="salao">Salão (corte feminino, escova, manicure)</MenuItem>
+        <TextField name="segment" select label="Segmento" defaultValue={DEFAULT_SEGMENT}>
+          {availableSegments().map((seg) => (
+            <MenuItem key={seg.slug} value={seg.slug}>
+              {seg.emoji} {seg.label}
+            </MenuItem>
+          ))}
         </TextField>
+        <FormControlLabel
+          control={<Checkbox name="withSampleServices" defaultChecked />}
+          label="Criar os serviços de exemplo do segmento (o dono edita depois)"
+        />
         <Typography variant="body2" color="text.secondary">
           A conta nasce sem senha: você recebe um link de convite pra mandar ao dono, que define a senha e aceita os
           termos no primeiro acesso. Plano pago já nasce ativo (use depois de conferir o PIX).
