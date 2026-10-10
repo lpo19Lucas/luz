@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notify, type PushPayload } from "@/lib/push";
 import { formatSalonDate, formatSalonTime, salonCalendarDay } from "@/lib/timezone";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
+import { isDiscreetSalon } from "@/lib/discreet";
 
 /**
  * Avisos pro cliente (Fase E4), nos aparelhos que ele inscreveu pelo link do
@@ -24,10 +25,15 @@ type ApptForMessage = {
   startAt: Date;
   service: { name: string };
   professional: { name: string };
-  salon: { name: string; slug: string };
+  salon: { name: string; slug: string; segment?: string | null };
   client: { name: string };
   accessToken: string;
 };
+
+/** Modo discreto: nada de serviço nem profissional nos avisos (src/lib/discreet.ts). */
+function discreetOr(appt: ApptForMessage, discreetText: string, normalText: string) {
+  return isDiscreetSalon(appt.salon) ? discreetText : normalText;
+}
 
 function firstName(name: string) {
   return name.trim().split(/\s+/)[0] ?? name;
@@ -45,7 +51,7 @@ export function bookingConfirmedMessage(appt: ApptForMessage): PushPayload {
   const day = formatSalonDate(appt.startAt, { weekday: "long", day: "2-digit", month: "2-digit" });
   return {
     title: `${appt.salon.name}: tudo certo!`,
-    body: `${firstName(appt.client.name)}, você vai receber o lembrete do seu ${appt.service.name} (${day} às ${formatSalonTime(appt.startAt)}).`,
+    body: `${firstName(appt.client.name)}, você vai receber o lembrete d${discreetOr(appt, "o seu horário", `o seu ${appt.service.name}`)} (${day} às ${formatSalonTime(appt.startAt)}).`,
     ...base(appt, `appt-${appt.accessToken}`),
   };
 }
@@ -53,7 +59,7 @@ export function bookingConfirmedMessage(appt: ApptForMessage): PushPayload {
 export function reminderTodayMessage(appt: ApptForMessage): PushPayload {
   return {
     title: `Hoje às ${formatSalonTime(appt.startAt)} · ${appt.salon.name}`,
-    body: `${firstName(appt.client.name)}, seu ${appt.service.name} com ${appt.professional.name} é hoje. Precisa remarcar? Toque aqui.`,
+    body: `${firstName(appt.client.name)}, ${discreetOr(appt, "seu horário", `seu ${appt.service.name} com ${appt.professional.name}`)} é hoje. Precisa remarcar? Toque aqui.`,
     ...base(appt, `appt-${appt.accessToken}`),
   };
 }
@@ -61,7 +67,7 @@ export function reminderTodayMessage(appt: ApptForMessage): PushPayload {
 export function presenceCheckMessage(appt: ApptForMessage): PushPayload {
   return {
     title: `Confirme sua presença · ${appt.salon.name}`,
-    body: `${firstName(appt.client.name)}, seu ${appt.service.name} é amanhã às ${formatSalonTime(appt.startAt)}. Toque para confirmar ou remarcar.`,
+    body: `${firstName(appt.client.name)}, ${discreetOr(appt, "seu horário", `seu ${appt.service.name}`)} é amanhã às ${formatSalonTime(appt.startAt)}. Toque para confirmar ou remarcar.`,
     ...base(appt, `appt-${appt.accessToken}`),
   };
 }
@@ -78,7 +84,7 @@ const include = {
   service: { select: { name: true } },
   professional: { select: { name: true } },
   client: { select: { id: true, name: true, bannedAt: true } },
-  salon: { select: { id: true, name: true, slug: true, subscription: true, presenceConfirmationCfg: true } },
+  salon: { select: { id: true, name: true, slug: true, segment: true, subscription: true, presenceConfirmationCfg: true } },
 } as const;
 
 /** Logo depois de o cliente ativar as notificações pelo link do agendamento. */
@@ -148,6 +154,7 @@ export async function sendClientDailyNotifications(now: Date = new Date()) {
     presenceCheckMessage,
     "clientPresenceChecks"
   );
-  await run(yesterdayDone, "CLIENT_REVIEW_REQUEST", reviewRequestMessage, "clientReviewRequests");
+  // Modo discreto: sem pedido de avaliação (avaliação pública exporia quem é cliente).
+  await run(yesterdayDone.filter((a) => !isDiscreetSalon(a.salon)), "CLIENT_REVIEW_REQUEST", reviewRequestMessage, "clientReviewRequests");
   return counts;
 }

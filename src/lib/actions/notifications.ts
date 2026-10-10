@@ -15,7 +15,7 @@ export async function sendTestNotificationAction(): Promise<TestNotificationStat
     recipient: { userId: member.userId },
     type: "TEST",
     payload: {
-      title: "Luz",
+      title: "DLJ Innovations",
       body: "Notificações funcionando neste aparelho! 🎉",
       url: member.role === "OWNER" ? "/agenda" : "/minha-agenda",
       tag: "teste",

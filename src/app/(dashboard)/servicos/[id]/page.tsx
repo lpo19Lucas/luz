@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { updateServiceAction } from "@/lib/actions/service";
 import ImageUploadField from "../../ImageUploadField";
 import { storedImageUrl } from "@/lib/storedImages";
+import { assetKindForSalon } from "@/lib/clientAssets";
+import SizePriceFields from "../SizePriceFields";
 
 export default async function EditarServicoPage({
   params,
@@ -48,6 +50,7 @@ export default async function EditarServicoPage({
               defaultValue={(service.priceCents / 100).toFixed(2)}
             />
           </Stack>
+          {assetKindForSalon(salon) && <SizePriceFields kind={assetKindForSalon(salon)!} current={service.sizePricesJson} />}
           <Stack direction="row" spacing={1.5}>
             <Button type="submit" variant="contained">
               Salvar

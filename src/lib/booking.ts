@@ -8,6 +8,7 @@ import { recordAppointmentEvent } from "@/lib/appointmentEvents";
 import { dispatchInBackground, notifyStaffAboutAppointment } from "@/lib/staffNotifications";
 import { cancelPendingWhatsAppJobs } from "@/lib/whatsappJobs";
 import { findUsablePackageForAppointment } from "@/lib/packages";
+import { assetKindForSalon, normalizeAssetInput, priceForSize, upsertClientAsset } from "@/lib/clientAssets";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -28,7 +29,8 @@ export type BookingErrorCode =
   | "PAST_SLOT"
   | "SALON_NOT_PUBLISHED"
   | "SALON_BLOCKED"
-  | "PACKAGE_NOT_USABLE";
+  | "PACKAGE_NOT_USABLE"
+  | "ASSET_REQUIRED";
 
 /**
  * Erro de negócio do fluxo de agendamento — as rotas e as actions traduzem o
@@ -146,6 +148,8 @@ export async function createAppointment(params: {
   source: AppointmentSource;
   actor: AppointmentEventActor;
   usePackageId?: string;
+  /** Ficha do pet/veículo (segmentos com clientProfile). Obrigatória no fluxo público desses segmentos. */
+  asset?: { name?: unknown; size?: unknown; detail?: unknown } | null;
 }) {
   const salon = await prisma.salon.findUnique({
     where: { slug: params.salonSlug },
@@ -173,6 +177,12 @@ export async function createAppointment(params: {
 
   const endAt = new Date(params.startAt.getTime() + service.durationMinutes * 60_000);
 
+  // Pet shop / lava-jato: a ficha define o porte e, com ele, o preço do atendimento.
+  const assetKind = assetKindForSalon(salon);
+  const assetInput = assetKind ? normalizeAssetInput(params.asset) : null;
+  if (assetKind && !assetInput && params.source === "ONLINE") throw new BookingError("ASSET_REQUIRED");
+  const price = priceForSize(service, assetInput?.size ?? null);
+
   if (params.source === "ONLINE") {
     await assertSlotIsOffered(params.professionalId, service.id, params.startAt);
   }
@@ -182,6 +192,10 @@ export async function createAppointment(params: {
       async (tx) => {
         await assertNoConflict(tx, params.professionalId, params.startAt, endAt);
         const client = await upsertClient(tx, salon.id, params.clientName, params.clientPhone);
+        const asset =
+          assetKind && assetInput
+            ? await upsertClientAsset(tx, { salonId: salon.id, clientId: client.id, kind: assetKind, input: assetInput })
+            : null;
         const presenceCfg = await tx.presenceConfirmationConfig.findUnique({
           where: { salonId: salon.id },
         });
@@ -196,13 +210,16 @@ export async function createAppointment(params: {
             endAt,
             status: presenceCfg?.enabled ? "AWAITING_CONFIRMATION" : "CONFIRMED",
             paidSelfReported: params.wantsToPayNow,
+            // Preço do atendimento (porte) e ficha; sem ficha, vale o preço do serviço.
+            priceCents: assetInput ? price : null,
+            assetId: asset?.id ?? null,
             source: params.source,
           },
         });
 
         if (params.usePackageId) {
           const usable = await findUsablePackageForAppointment(
-            { salonId: salon.id, clientId: client.id, serviceId: service.id, priceCents: service.priceCents },
+            { salonId: salon.id, clientId: client.id, serviceId: service.id, priceCents: price },
             tx
           );
           if (!usable || usable.id !== params.usePackageId) throw new BookingError("PACKAGE_NOT_USABLE");
@@ -212,14 +229,14 @@ export async function createAppointment(params: {
             where: { id: usable.id },
             data: isServiceCredits
               ? { remainingCredits: { decrement: 1 } }
-              : { remainingValueCents: { decrement: service.priceCents } },
+              : { remainingValueCents: { decrement: price } },
           });
           await tx.packageConsumption.create({
             data: {
               clientPackageId: usable.id,
               appointmentId: created.id,
               creditsUsed: isServiceCredits ? 1 : null,
-              valueUsedCents: isServiceCredits ? null : service.priceCents,
+              valueUsedCents: isServiceCredits ? null : price,
             },
           });
           created.coveredByPackage = true;

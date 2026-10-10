@@ -6,6 +6,7 @@ import { Box, Paper, Typography, Button } from "@mui/material";
 import Link from "next/link";
 import { findValidPasswordToken, tokenRequiresTerms } from "@/lib/passwordReset";
 import ResetPasswordForm from "./ResetPasswordForm";
+import BrandLogo from "@/components/BrandLogo";
 
 export const metadata: Metadata = { title: "Definir senha", robots: { index: false } };
 
@@ -18,8 +19,9 @@ export default async function RedefinirSenhaPage({ params }: { params: Promise<{
       <Paper elevation={1} sx={{ p: 4, width: "100%", maxWidth: 400 }}>
         {record ? (
           <>
+        <Box sx={{ mb: 2.5 }}><BrandLogo size={40} /></Box>
             <Typography variant="h5" sx={{ fontWeight: 500, mb: 1 }}>
-              {record.purpose === "INVITE" ? "Bem-vindo(a) à Luz!" : "Criar nova senha"}
+              {record.purpose === "INVITE" ? "Bem-vindo(a) à DLJ Innovations!" : "Criar nova senha"}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
               {record.purpose === "INVITE"

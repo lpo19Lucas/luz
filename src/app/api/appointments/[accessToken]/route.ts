@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isDiscreetSalon } from "@/lib/discreet";
 import { calendarLinksFor } from "@/lib/calendarLinks";
 
 /**
@@ -29,6 +30,7 @@ export async function GET(
     endAt: appointment.endAt.toISOString(),
     salonName: appointment.salon.name,
     salonSlug: appointment.salon.slug,
+    segment: appointment.salon.segment,
     professionalId: appointment.professionalId,
     professionalName: appointment.professional.name,
     serviceId: appointment.serviceId,
@@ -36,7 +38,7 @@ export async function GET(
     clientName: appointment.client.name,
     rescheduledCount: appointment.rescheduledCount,
     hasReview: appointment.review !== null,
-    canReview: appointment.status === "COMPLETED" && appointment.review === null,
+    canReview: appointment.status === "COMPLETED" && appointment.review === null && !isDiscreetSalon(appointment.salon),
     calendar: calendarLinksFor(appointment),
   });
 }

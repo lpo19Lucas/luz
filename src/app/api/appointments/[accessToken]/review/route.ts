@@ -6,6 +6,7 @@ const STATUS_AND_MESSAGE: Record<ReviewError["code"], [number, string]> = {
   NOT_COMPLETED: [409, "Só é possível avaliar depois que o atendimento for concluído"],
   ALREADY_REVIEWED: [409, "Esse atendimento já foi avaliado"],
   INVALID_RATING: [400, "Nota inválida"],
+  NOT_ALLOWED: [403, "Esse negócio não recebe avaliações públicas"],
 };
 
 /**

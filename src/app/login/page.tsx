@@ -1,7 +1,7 @@
 import LoginForm from "./LoginForm";
 
 const NOTICES = {
-  bloqueado: { severity: "warning", text: "Esta conta está bloqueada. Fale com o suporte da Luz." },
+  bloqueado: { severity: "warning", text: "Esta conta está bloqueada. Fale com o suporte da DLJ Innovations." },
   expirada: { severity: "info", text: "Sua sessão expirou porque a senha foi alterada. Entre de novo." },
   "sem-acesso": { severity: "warning", text: "Esta conta não tem mais acesso a nenhum salão. Fale com o responsável pelo salão." },
 } as const;

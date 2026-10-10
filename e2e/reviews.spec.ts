@@ -52,7 +52,7 @@ test("cliente avalia atendimento concluído, avaliação aparece pro dono e na v
   await page.getByRole("radio", { name: "5 Stars" }).click({ force: true });
   await page.getByPlaceholder("Comentário (opcional)").fill("Muito bom atendimento!");
   await page.getByRole("button", { name: "Enviar avaliação" }).click();
-  await expect(page.getByText("Você já avaliou este atendimento, obrigado!")).toBeVisible();
+  await expect(page.getByText(/Você já avaliou .*, obrigado!/)).toBeVisible();
 
   // Dono vê em /avaliacoes.
   await page.goto("/avaliacoes");

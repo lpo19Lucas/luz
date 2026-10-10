@@ -9,9 +9,13 @@ import { prisma } from "@/lib/prisma";
 import { absoluteUrl } from "@/lib/appUrl";
 import { publishSalonAction } from "@/lib/actions/salon";
 import ShareLinkButton from "./ShareLinkButton";
+import InstallAppPrompt from "../../InstallAppPrompt";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 export default async function InicioPage() {
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const [servicesCount, professionals] = await Promise.all([
     prisma.service.count({ where: { salonId: salon.id } }),
@@ -29,10 +33,10 @@ export default async function InicioPage() {
   );
 
   const checklist = [
-    { label: "Dados do salão cadastrados", done: true },
+    { label: `Dados ${businessOf(vocab)} cadastrados`, done: true },
     { label: "Pelo menos 1 serviço cadastrado", done: servicesCount > 0 },
     {
-      label: "Pelo menos 1 profissional ativo, com horário e serviço vinculado",
+      label: `Pelo menos 1 ${vocab.professional} ativo, com horário e serviço vinculado`,
       done: hasReadyProfessional,
     },
   ];
@@ -46,9 +50,16 @@ export default async function InicioPage() {
         Primeiros passos
       </Typography>
 
+      <Box sx={{ mb: 2 }}>
+        <InstallAppPrompt
+          appName="DLJ Innovations"
+          description="Sua agenda na tela inicial do celular, com aviso de cada novo agendamento."
+        />
+      </Box>
+
       {salon.publishedAt ? (
         <Alert severity="success" sx={{ mb: 2 }}>
-          Seu link já está publicado e aberto pra clientes.
+          Seu link já está publicado e aberto para {vocab.clients}.
         </Alert>
       ) : (
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -75,7 +86,7 @@ export default async function InicioPage() {
             Ir pra Serviços
           </Button>
           <Button component={Link} href="/profissionais" size="small" variant="outlined">
-            Ir pra Profissionais
+            Ir pra {cap(vocab.professionals)}
           </Button>
         </Stack>
       </Paper>
@@ -100,7 +111,7 @@ export default async function InicioPage() {
 
         {salon.publishedAt ? (
           <Typography variant="body2" color="text.secondary">
-            Publicado. Pode continuar editando serviços e profissionais a qualquer momento.
+            Publicado. Pode continuar editando serviços e {vocab.professionals} a qualquer momento.
           </Typography>
         ) : (
           <form action={publishSalonAction}>

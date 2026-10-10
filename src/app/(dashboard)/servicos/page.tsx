@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { createServiceAction, deleteServiceAction } from "@/lib/actions/service";
 import ImageUploadField from "../ImageUploadField";
 import { storedImageUrl } from "@/lib/storedImages";
+import { assetKindForSalon, parseSizePrices } from "@/lib/clientAssets";
+import SizePriceFields from "./SizePriceFields";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -13,6 +15,7 @@ function formatPrice(cents: number) {
 
 export default async function ServicosPage() {
   const salon = await getCurrentSalon();
+  const assetKind = assetKindForSalon(salon);
   const services = await prisma.service.findMany({
     where: { salonId: salon.id },
     include: { appointments: { select: { id: true }, take: 1 } },
@@ -53,8 +56,9 @@ export default async function ServicosPage() {
                 {svc.durationMinutes} min
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
-              {formatPrice(svc.priceCents)}
+            <Typography sx={{ fontWeight: 700, color: "secondary.main" }}>
+              {Object.keys(parseSizePrices(svc.sizePricesJson)).length > 0 ? "a partir de " : ""}
+              {formatPrice(Math.min(svc.priceCents, ...Object.values(parseSizePrices(svc.sizePricesJson))))}
             </Typography>
             <Button component={Link} href={`/servicos/${svc.id}`} size="small">
               Editar
@@ -90,6 +94,7 @@ export default async function ServicosPage() {
             <TextField name="durationMinutes" label="Duração (min)" type="number" size="small" required />
             <TextField name="price" label="Preço (R$)" type="number" size="small" required inputProps={{ step: "0.01" }} />
           </Stack>
+          {assetKind && <SizePriceFields kind={assetKind} />}
           <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
             Adicionar
           </Button>

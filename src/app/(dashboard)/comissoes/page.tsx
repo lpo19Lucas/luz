@@ -5,6 +5,7 @@ import { Box, Typography, Paper, Stack, TextField, Button, Alert } from "@mui/ma
 import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { getCommissionReport } from "@/lib/commissions";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -17,6 +18,8 @@ export default async function ComissoesPage({
 }) {
   const { from, to } = await searchParams;
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const report = await getCommissionReport({
     salonId: salon.id,
@@ -50,10 +53,10 @@ export default async function ComissoesPage({
 
       {unconfigured.length > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          {unconfigured.length === 1 ? "1 profissional não tem" : `${unconfigured.length} profissionais não têm`}{" "}
+          {unconfigured.length === 1 ? `1 ${vocab.professional} não tem` : `${unconfigured.length} ${vocab.professionals} não têm`}{" "}
           % de comissão configurada —{" "}
           <Link href="/profissionais" style={{ color: "inherit" }}>
-            configure em Profissionais
+            configure em {cap(vocab.professionals)}
           </Link>
           .
         </Alert>
@@ -71,7 +74,7 @@ export default async function ComissoesPage({
       <Paper elevation={1}>
         {report.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">
-            Nenhum atendimento concluído nesse período.
+            {apptG.none} {vocab.appointment} concluíd{vocab.appointmentGender === "f" ? "a" : "o"} nesse período.
           </Typography>
         )}
         {report.map((row) => (
@@ -85,11 +88,11 @@ export default async function ComissoesPage({
             <Box sx={{ flexGrow: 1 }}>
               <Typography sx={{ fontWeight: 500 }}>{row.professionalName}</Typography>
               <Typography variant="caption" color="text.secondary">
-                {row.appointmentsCount} atendimento(s) · faturou {formatPrice(row.totalRevenueCents)}
+                {row.appointmentsCount} {vocab.appointment}(s) · faturou {formatPrice(row.totalRevenueCents)}
                 {row.commissionPercent !== null && ` · ${row.commissionPercent}%`}
               </Typography>
             </Box>
-            <Typography sx={{ fontWeight: 700, color: row.commissionCents !== null ? "primary.main" : "text.disabled" }}>
+            <Typography sx={{ fontWeight: 700, color: row.commissionCents !== null ? "secondary.main" : "text.disabled" }}>
               {row.commissionCents !== null ? formatPrice(row.commissionCents) : "não configurado"}
             </Typography>
           </Stack>

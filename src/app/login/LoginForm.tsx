@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Box, Paper, TextField, Button, Typography, Alert, Stack } from "@mui/material";
 import Link from "next/link";
 import { loginAction } from "@/lib/actions/auth";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function LoginForm({ notice }: { notice: { severity: "info" | "success" | "warning"; text: string } | null }) {
   const [state, formAction, pending] = useActionState(loginAction, undefined);
@@ -20,6 +21,7 @@ export default function LoginForm({ notice }: { notice: { severity: "info" | "su
       }}
     >
       <Paper elevation={1} sx={{ p: 4, width: "100%", maxWidth: 380 }}>
+        <Box sx={{ mb: 2.5 }}><BrandLogo size={40} /></Box>
         <Typography variant="h5" sx={{ fontWeight: 500, mb: 3 }}>
           Entrar
         </Typography>
@@ -44,7 +46,7 @@ export default function LoginForm({ notice }: { notice: { severity: "info" | "su
         <Typography variant="body2" sx={{ mt: 1.5 }}>
           Ainda não tem conta?{" "}
           <Link href="/cadastro" style={{ color: "inherit" }}>
-            Criar salão
+            Criar conta
           </Link>
         </Typography>
       </Paper>

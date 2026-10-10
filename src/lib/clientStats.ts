@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { appointmentPriceCents } from "@/lib/clientAssets";
 
 export interface ClientStats {
   visitCount: number; // COMPLETED
@@ -24,7 +25,7 @@ export async function getClientStats(salonId: string, clientId: string): Promise
   // vendido (ver src/lib/packages.ts) — contar de novo aqui duplicaria.
   const totalSpentCents = completed
     .filter((a) => !a.coveredByPackage)
-    .reduce((sum, a) => sum + a.service.priceCents, 0);
+    .reduce((sum, a) => sum + appointmentPriceCents(a), 0);
 
   return {
     visitCount: completed.length,
@@ -56,7 +57,7 @@ export async function getAllClientStats(salonId: string): Promise<Map<string, Cl
     const noShowCount = appts.filter((a) => a.status === "NO_SHOW").length;
     const totalSpentCents = completed
       .filter((a) => !a.coveredByPackage)
-      .reduce((sum, a) => sum + a.service.priceCents, 0);
+      .reduce((sum, a) => sum + appointmentPriceCents(a), 0);
     stats.set(clientId, {
       visitCount: completed.length,
       noShowCount,

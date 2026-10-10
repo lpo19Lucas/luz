@@ -20,7 +20,7 @@ export class ProfessionalAccessError extends Error {
 }
 
 function inviteMessage(params: { name: string; salonName: string; link: string; expiresInLabel: string }) {
-  return `Olá, ${params.name}! Você foi convidado(a) para ver sua agenda do ${params.salonName} na Luz e receber os seus agendamentos no celular. Crie sua senha por este link (vale ${params.expiresInLabel}): ${params.link}`;
+  return `Olá, ${params.name}! Você foi convidado(a) para ver sua agenda do ${params.salonName} na DLJ Innovations e receber os seus agendamentos no celular. Crie sua senha por este link (vale ${params.expiresInLabel}): ${params.link}`;
 }
 
 async function linkFor(user: { id: string; termsVersion: string | null }, professional: { name: string; phone: string | null }, salonName: string) {
@@ -37,18 +37,18 @@ export async function grantProfessionalAccess(params: { salonId: string; profess
     where: { id: params.professionalId, salonId: params.salonId },
     include: { salon: { select: { name: true, ownerId: true } } },
   });
-  if (!professional) throw new ProfessionalAccessError("NOT_FOUND", "Profissional não encontrado.");
-  if (professional.userId) throw new ProfessionalAccessError("ALREADY_LINKED", "Este profissional já tem acesso.");
+  if (!professional) throw new ProfessionalAccessError("NOT_FOUND", "Pessoa da equipe não encontrada.");
+  if (professional.userId) throw new ProfessionalAccessError("ALREADY_LINKED", "Essa pessoa já tem acesso.");
 
   let user = await prisma.user.findUnique({ where: { email } });
   if (user) {
     // Dono entra sempre como dono (ver resolveMember) — nunca veria esta agenda.
     const ownsSalon = await prisma.salon.count({ where: { ownerId: user.id } });
     if (ownsSalon > 0) {
-      throw new ProfessionalAccessError("EMAIL_IS_OWNER", "Esse e-mail é de uma conta de dono de salão. Use outro e-mail para o profissional.");
+      throw new ProfessionalAccessError("EMAIL_IS_OWNER", "Esse e-mail é de uma conta de dono. Use outro e-mail para a pessoa da equipe.");
     }
     const linkedHere = await prisma.professional.count({ where: { salonId: params.salonId, userId: user.id } });
-    if (linkedHere > 0) throw new ProfessionalAccessError("ALREADY_LINKED", "Esse e-mail já dá acesso a outro profissional deste salão.");
+    if (linkedHere > 0) throw new ProfessionalAccessError("ALREADY_LINKED", "Esse e-mail já dá acesso a outra pessoa da equipe.");
   } else {
     user = await prisma.user.create({
       data: { name: professional.name, email, passwordHash: await hashPassword(randomBytes(32).toString("hex")) },
@@ -66,7 +66,7 @@ export async function resendProfessionalLink(salonId: string, professionalId: st
     where: { id: professionalId, salonId },
     include: { user: { select: { id: true, termsVersion: true } }, salon: { select: { name: true } } },
   });
-  if (!professional?.user) throw new ProfessionalAccessError("NOT_FOUND", "Este profissional não tem acesso.");
+  if (!professional?.user) throw new ProfessionalAccessError("NOT_FOUND", "Essa pessoa não tem acesso.");
   return linkFor(professional.user, professional, professional.salon.name);
 }
 
@@ -96,6 +96,6 @@ export async function getProfessionalAgenda(professionalId: string, days = 14, n
       ],
     },
     orderBy: { startAt: "asc" },
-    include: { service: { select: { name: true, durationMinutes: true } }, client: { select: { name: true, phone: true } } },
+    include: { service: { select: { name: true, durationMinutes: true } }, client: { select: { name: true, phone: true } }, asset: true },
   });
 }

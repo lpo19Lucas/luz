@@ -1,14 +1,19 @@
 "use client";
 
-// Botão "Instalar app" (PWA). Android/Chrome: usa o prompt nativo
-// (beforeinstallprompt). iPhone/iPad: o Safari não tem prompt — abre o passo
-// a passo do "Compartilhar → Adicionar à Tela de Início" (e no iOS o push só
-// funciona com o app instalado). Já instalado ou navegador sem suporte: some.
+// Botão "Instalar app" (PWA).
+// - Com o prompt nativo disponível (Chrome/Edge/Android): instala em um toque.
+//   O prompt é capturado no <head> (src/app/layout.tsx) assim que a página
+//   carrega — o Chrome avisa uma vez só, muitas vezes antes deste botão
+//   existir (no celular ele fica num menu que só monta quando é aberto).
+// - Sem prompt (iPhone, Samsung Internet, Firefox, Safari no Mac, ou o Chrome
+//   ainda não ofereceu): abre o passo a passo do navegador da pessoa.
+// - Já instalado (aberto pelo ícone): some.
 import { useEffect, useState } from "react";
 import { Box, Button, Dialog, DialogContent, DialogTitle, Typography, Stack } from "@mui/material";
-import { isIos } from "@/lib/pwa";
+import { installHelp, isIos, type InstallHelp } from "@/lib/pwa";
 
 type BeforeInstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+type WindowWithPrompt = Window & { __luzInstallPrompt?: BeforeInstallPromptEvent | null };
 
 export function isStandaloneDisplay() {
   if (typeof window === "undefined") return false;
@@ -28,34 +33,46 @@ export default function InstallAppPrompt({
   variant?: "card" | "sidebar";
 }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [help, setHelp] = useState<InstallHelp | null>(null);
   const [ios, setIos] = useState(false);
   const [installed, setInstalled] = useState(true); // começa escondido até checar no cliente
   const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
+    const w = window as WindowWithPrompt;
     setInstalled(isStandaloneDisplay());
     setIos(isIos(navigator.userAgent, navigator.maxTouchPoints));
-    const onPrompt = (e: Event) => {
+    setHelp(installHelp(navigator.userAgent, navigator.maxTouchPoints));
+    setDeferred(w.__luzInstallPrompt ?? null);
+
+    // Captura própria também (caso o script do <head> não tenha rodado, ex.: testes).
+    const onNative = (e: Event) => {
       e.preventDefault();
+      w.__luzInstallPrompt = e as BeforeInstallPromptEvent;
       setDeferred(e as BeforeInstallPromptEvent);
     };
+    const onCaptured = () => setDeferred(w.__luzInstallPrompt ?? null);
     const onInstalled = () => setInstalled(true);
-    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("beforeinstallprompt", onNative);
+    window.addEventListener("luz:installprompt", onCaptured);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
-      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("beforeinstallprompt", onNative);
+      window.removeEventListener("luz:installprompt", onCaptured);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
-  if (installed || (!deferred && !ios)) return null;
+  if (installed || !help) return null;
 
   async function handleClick() {
     if (deferred) {
       await deferred.prompt();
       const { outcome } = await deferred.userChoice;
-      if (outcome === "accepted") setInstalled(true);
+      // O prompt só pode ser usado uma vez.
+      (window as WindowWithPrompt).__luzInstallPrompt = null;
       setDeferred(null);
+      if (outcome === "accepted") setInstalled(true);
     } else {
       setHelpOpen(true);
     }
@@ -66,7 +83,7 @@ export default function InstallAppPrompt({
   return (
     <>
       {variant === "sidebar" ? (
-        <Button onClick={handleClick} size="small" fullWidth sx={{ color: "#D4AF37", justifyContent: "flex-start", px: 1 }}>
+        <Button onClick={handleClick} size="small" fullWidth sx={{ color: "#3AA6FF", justifyContent: "flex-start", px: 1 }}>
           📲 {label}
         </Button>
       ) : (
@@ -86,21 +103,17 @@ export default function InstallAppPrompt({
       )}
 
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Instalar no iPhone</DialogTitle>
+        <DialogTitle>Instalar o app {appName}</DialogTitle>
         <DialogContent>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+            No {help.platform}:
+          </Typography>
           <Stack spacing={1.5} sx={{ mb: 1 }}>
-            <Typography variant="body2">
-              1. Abra esta página no <b>Safari</b>.
-            </Typography>
-            <Typography variant="body2">
-              2. Toque em <b>Compartilhar</b> (o quadrado com a seta para cima ⬆️).
-            </Typography>
-            <Typography variant="body2">
-              3. Escolha <b>Adicionar à Tela de Início</b> e confirme.
-            </Typography>
-            <Typography variant="body2">
-              4. Abra o app {appName} pela tela inicial para ativar as notificações.
-            </Typography>
+            {help.steps.map((step, i) => (
+              <Typography key={i} variant="body2">
+                {i + 1}. {step}
+              </Typography>
+            ))}
           </Stack>
           <Button onClick={() => setHelpOpen(false)} fullWidth variant="outlined" sx={{ mt: 1 }}>
             Entendi

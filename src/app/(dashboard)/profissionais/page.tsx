@@ -8,9 +8,11 @@ import { createProfessionalAction, deleteProfessionalAction } from "@/lib/action
 import { AvailabilityFields } from "./AvailabilityFields";
 import ImageUploadField from "../ImageUploadField";
 import { storedImageUrl } from "@/lib/storedImages";
+import { getSegment } from "@/lib/segments";
 
 export default async function ProfissionaisPage() {
   const salon = await getCurrentSalon();
+  const { vocab } = getSegment(salon.segment);
   const professionals = await prisma.professional.findMany({
     where: { salonId: salon.id },
     include: { services: true, appointments: { select: { id: true }, take: 1 } },
@@ -22,14 +24,14 @@ export default async function ProfissionaisPage() {
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          {professionals.length} profissional(is) cadastrado(s)
+          {professionals.length} {professionals.length === 1 ? vocab.professional : vocab.professionals} cadastrado(s)
         </Typography>
       </Stack>
 
       <Paper elevation={1} sx={{ mb: 3 }}>
         {professionals.length === 0 && (
           <Typography sx={{ p: 2 }} color="text.secondary">
-            Nenhum profissional ainda.
+            Ninguém cadastrado ainda.
           </Typography>
         )}
         {professionals.map((prof) => (
@@ -69,7 +71,7 @@ export default async function ProfissionaisPage() {
 
       <Paper elevation={1} sx={{ p: 2.5, maxWidth: 520 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1.5 }}>
-          Novo profissional
+          Adicionar {vocab.professional}
         </Typography>
         <Stack component="form" action={createProfessionalAction} spacing={2}>
           <ImageUploadField label="Foto (opcional)" />
@@ -83,7 +85,7 @@ export default async function ProfissionaisPage() {
             inputProps={{ min: 0, max: 100, step: "0.1" }}
             helperText="Opcional — usado no relatório de Comissões"
           />
-          <AvailabilityFields services={services} />
+          <AvailabilityFields services={services} professionalWord={vocab.professional} />
           <Button type="submit" variant="contained" sx={{ alignSelf: "flex-start" }}>
             Adicionar
           </Button>

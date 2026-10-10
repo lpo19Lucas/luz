@@ -9,6 +9,7 @@
 import { prisma } from "@/lib/prisma";
 import { resetDb, createTestSalon, restoreDefaultPlans } from "@tests/integration/helpers";
 import { findValidPasswordToken } from "@/lib/passwordReset";
+import { SEGMENTS } from "@/lib/segments";
 // jest.mock abaixo é içado pelo Jest pra antes destes imports.
 
 let isAdmin = false;
@@ -94,7 +95,7 @@ describe("com sessão de admin", () => {
   it("cadastro facilitado cria o salão sem aceite e devolve convite válido + WhatsApp", async () => {
     const state = await createSalonAction(
       undefined,
-      form({ salonName: "Studio Bia", ownerName: "Bia", email: "bia@studio.com", phone: "11977776666", plan: "TRIAL", trialDays: "30", serviceTemplate: "salao" })
+      form({ salonName: "Studio Bia", ownerName: "Bia", email: "bia@studio.com", phone: "11977776666", plan: "TRIAL", trialDays: "30", segment: "cabeleireira", withSampleServices: "on" })
     );
     expect(state?.error).toBeUndefined();
     expect(state?.salonId).toBeTruthy();
@@ -105,7 +106,8 @@ describe("com sessão de admin", () => {
     expect(record?.purpose).toBe("INVITE");
     expect(record?.user.email).toBe("bia@studio.com");
     expect(record?.user.termsVersion).toBeNull();
-    expect(await prisma.service.count({ where: { salonId: state!.salonId } })).toBe(3);
+    expect(await prisma.service.count({ where: { salonId: state!.salonId } })).toBe(SEGMENTS.cabeleireira.sampleServices.length);
+    expect((await prisma.salon.findUniqueOrThrow({ where: { id: state!.salonId } })).segment).toBe("cabeleireira");
   });
 
   it("cadastro facilitado com e-mail repetido devolve erro amigável", async () => {

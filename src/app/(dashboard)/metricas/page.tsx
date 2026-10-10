@@ -6,6 +6,8 @@ import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { AWAITING_OUTCOME_STATUSES } from "@/lib/appointmentOutcome";
+import { appointmentPriceCents } from "@/lib/clientAssets";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -13,6 +15,8 @@ function formatPrice(cents: number) {
 
 export default async function MetricasPage() {
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const completed = await prisma.appointment.findMany({
     where: { salonId: salon.id, status: "COMPLETED" },
@@ -37,7 +41,7 @@ export default async function MetricasPage() {
   const totalPastCount = completed.length + noShowCount;
   const noShowRate = totalPastCount > 0 ? (noShowCount / totalPastCount) * 100 : 0;
 
-  const totalRevenueCents = completed.reduce((sum, a) => sum + a.service.priceCents, 0);
+  const totalRevenueCents = completed.reduce((sum, a) => sum + appointmentPriceCents(a), 0);
   const ticketMedioCents = completed.length > 0 ? totalRevenueCents / completed.length : 0;
 
   const revenueByProfessional = new Map<string, { name: string; cents: number }>();
@@ -46,7 +50,7 @@ export default async function MetricasPage() {
       name: appt.professional.name,
       cents: 0,
     };
-    entry.cents += appt.service.priceCents;
+    entry.cents += appointmentPriceCents(appt);
     revenueByProfessional.set(appt.professionalId, entry);
   }
   const revenueRows = [...revenueByProfessional.values()].sort((a, b) => b.cents - a.cents);
@@ -76,8 +80,8 @@ export default async function MetricasPage() {
           }
         >
           {awaitingOutcomeCount === 1
-            ? "1 atendimento que já passou ainda não foi marcado como concluído ou não compareceu."
-            : `${awaitingOutcomeCount} atendimentos que já passaram ainda não foram marcados como concluídos ou não compareceu.`}{" "}
+            ? `1 ${vocab.appointment} que já passou ainda não foi marcad${vocab.appointmentGender === "f" ? "a" : "o"} como concluíd${vocab.appointmentGender === "f" ? "a" : "o"} ou não compareceu.`
+            : `${awaitingOutcomeCount} ${vocab.appointments} que já passaram ainda não foram marcad${vocab.appointmentGender === "f" ? "as" : "os"} como concluíd${vocab.appointmentGender === "f" ? "as" : "os"} ou não compareceu.`}{" "}
           Eles só entram nas métricas depois de marcados.
         </Alert>
       )}
@@ -97,7 +101,7 @@ export default async function MetricasPage() {
 
       <Paper elevation={1} sx={{ p: 2.5 }}>
         <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 2 }}>
-          Faturamento por profissional
+          Faturamento por {vocab.professional}
         </Typography>
         {revenueRows.length === 0 && (
           <Typography color="text.secondary">Nenhum agendamento concluído ainda.</Typography>

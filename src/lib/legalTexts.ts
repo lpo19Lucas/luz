@@ -1,5 +1,5 @@
 /**
- * Textos-base dos documentos jurídicos da Luz. Funções (e não constantes)
+ * Textos-base dos documentos jurídicos da DLJ Innovations. Funções (e não constantes)
  * porque interpolam os dados da empresa de getLegalEntity(), que vêm de env
  * vars lidas em runtime.
  *

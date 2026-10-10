@@ -7,7 +7,8 @@
  */
 import { prisma } from "@/lib/prisma";
 import { resetDb, restoreDefaultPlans } from "@tests/integration/helpers";
-import { provisionSalon, ProvisionError, SERVICE_TEMPLATES } from "@/lib/salonProvisioning";
+import { provisionSalon, ProvisionError } from "@/lib/salonProvisioning";
+import { SEGMENTS } from "@/lib/segments";
 import { LEGAL_VERSION } from "@/lib/legal";
 import { getSubscriptionAccess } from "@/lib/subscriptionAccess";
 
@@ -77,10 +78,20 @@ describe("provisionSalon", () => {
     expect(sub.activatedManuallyByEmail).toBe("admin");
   });
 
-  it("cria os serviços do modelo escolhido", async () => {
-    const { salon } = await provisionSalon({ ...base, termsAccepted: true, serviceTemplate: "barbearia" });
+  it("grava o segmento e cria os serviços de exemplo dele", async () => {
+    const { salon } = await provisionSalon({ ...base, termsAccepted: true, segment: "manicure", withSampleServices: true });
+    expect(salon.segment).toBe("manicure");
     const services = await prisma.service.findMany({ where: { salonId: salon.id } });
-    expect(services.map((s) => s.name).sort()).toEqual(SERVICE_TEMPLATES.barbearia.map((s) => s.name).sort());
+    expect(services.map((s) => s.name).sort()).toEqual(SEGMENTS.manicure.sampleServices.map((s) => s.name).sort());
+  });
+
+  it("sem pedir serviços de exemplo, não cria nenhum; segmento omitido ou desconhecido vira barbearia", async () => {
+    const a = await provisionSalon({ ...base, termsAccepted: true, segment: "manicure" });
+    expect(await prisma.service.count({ where: { salonId: a.salon.id } })).toBe(0);
+    const b = await provisionSalon({ ...base, email: "b@teste.com", salonName: "B", termsAccepted: true, segment: "nao-existe" });
+    expect(b.salon.segment).toBe("barbearia");
+    const c = await provisionSalon({ ...base, email: "c@teste.com", salonName: "C", termsAccepted: true });
+    expect(c.salon.segment).toBe("barbearia");
   });
 
   it("recusa e-mail já cadastrado (sem diferenciar maiúsculas)", async () => {
@@ -99,13 +110,15 @@ describe("provisionSalon", () => {
   it("não deixa conta pela metade se algo falhar no meio da transação", async () => {
     // Força falha no último insert: um modelo de serviço com preço nulo viola
     // o NOT NULL de services.priceCents.
-    const templates = SERVICE_TEMPLATES as unknown as Record<string, unknown>;
-    const original = templates.salao;
-    templates.salao = [{ name: "Quebrado", durationMinutes: 30, priceCents: null }];
+    const segment = SEGMENTS.manicure as unknown as { sampleServices: unknown };
+    const original = segment.sampleServices;
+    segment.sampleServices = [{ name: "Quebrado", durationMinutes: 30, priceCents: null }];
     try {
-      await expect(provisionSalon({ ...base, termsAccepted: true, serviceTemplate: "salao" })).rejects.toThrow();
+      await expect(
+        provisionSalon({ ...base, termsAccepted: true, segment: "manicure", withSampleServices: true })
+      ).rejects.toThrow();
     } finally {
-      templates.salao = original;
+      segment.sampleServices = original;
     }
     expect(await prisma.user.count()).toBe(0);
     expect(await prisma.salon.count()).toBe(0);

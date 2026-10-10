@@ -6,8 +6,10 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { setAppointmentOutcomeAction, cancelAppointmentOwnerAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
 import { whatsappReminderLink } from "@/lib/whatsappReminder";
+import { assetSummary } from "@/lib/clientAssets";
 import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, formatSalonDate, formatSalonTime } from "@/lib/timezone";
 import { getAgendaKpis, type AgendaKpis } from "@/lib/agendaKpis";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -128,6 +130,8 @@ export default async function AgendaPage({
 }) {
   const { date: dateParam } = await searchParams;
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
   const date = parseDate(dateParam);
 
   const dayStart = salonMidnightUTC(date);
@@ -147,7 +151,7 @@ export default async function AgendaPage({
     include: {
       appointments: {
         where: { startAt: { gte: dayStart, lte: dayEnd } },
-        include: { client: true, service: true },
+        include: { client: true, service: true, asset: true },
         orderBy: { startAt: "asc" },
       },
     },
@@ -204,7 +208,7 @@ export default async function AgendaPage({
       <KpiHeader title="Esta semana" kpis={weekKpis} />
 
       {professionals.length === 0 && (
-        <Typography color="text.secondary">Nenhum profissional cadastrado ainda.</Typography>
+        <Typography color="text.secondary">Cadastre seus {vocab.professionals} para ver a agenda.</Typography>
       )}
 
       <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
@@ -245,6 +249,7 @@ export default async function AgendaPage({
                   </Typography>
                   <Typography variant="caption" color="text.secondary" display="block">
                     {appt.client.name}
+                    {appt.asset ? ` · ${assetSummary(appt.asset)}` : ""}
                   </Typography>
                   <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.5 }}>
                     <Chip
@@ -254,7 +259,7 @@ export default async function AgendaPage({
                     />
                     {appt.status === "AWAITING_CONFIRMATION" && appt.noShowHandledAt && appt.startAt > now && (
                       <Chip
-                        label="Cliente não confirmou — ligue ou cancele"
+                        label={`${cap(vocab.client)} não confirmou — ligue ou cancele`}
                         color="error"
                         size="small"
                       />
@@ -275,7 +280,7 @@ export default async function AgendaPage({
                           Remarcar
                         </Button>
                         {clientsWithPush.has(appt.clientId) ? (
-                          <Chip label="🔔 recebe lembrete" size="small" variant="outlined" title="O cliente ativou as notificações do app" />
+                          <Chip label="🔔 recebe lembrete" size="small" variant="outlined" title={`O ${vocab.client} ativou as notificações do app`} />
                         ) : (
                           <Button
                             component="a"
@@ -285,7 +290,7 @@ export default async function AgendaPage({
                             size="small"
                             color="success"
                             sx={{ minWidth: 0, px: 1, py: 0.25, fontSize: 12 }}
-                            title="Cliente sem notificações ativas — abre o WhatsApp com o lembrete pronto"
+                            title={`${cap(vocab.client)} sem notificações ativas — abre o WhatsApp com o lembrete pronto`}
                           >
                             Lembrar no WhatsApp
                           </Button>

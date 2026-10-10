@@ -1,6 +1,7 @@
 // Metadados de PWA da área pública do salão (página + gerenciar
 // agendamento): o cliente que instala leva o "app do estabelecimento".
 import type { Metadata } from "next";
+import LightThemeScope from "./LightThemeScope";
 
 export async function generateMetadata({ params }: { params: Promise<{ salonSlug: string }> }): Promise<Metadata> {
   const { salonSlug } = await params;
@@ -11,6 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ salonSlug
   };
 }
 
+
 export default function SalonPublicLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <LightThemeScope>{children}</LightThemeScope>;
 }

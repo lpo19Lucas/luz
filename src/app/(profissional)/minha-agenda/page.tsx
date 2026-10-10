@@ -6,6 +6,7 @@ import { getProfessionalAgenda } from "@/lib/professionalAccess";
 import { setOwnAppointmentOutcomeAction } from "@/lib/actions/professionalArea";
 import { formatSalonDate, formatSalonTime, salonCalendarDay } from "@/lib/timezone";
 import EnableNotifications from "../../EnableNotifications";
+import { assetSummary } from "@/lib/clientAssets";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function MinhaAgendaPage() {
 
       {appointments.length === 0 && (
         <Paper variant="outlined" sx={{ p: 3, textAlign: "center" }}>
-          <Typography color="text.secondary">Nenhum atendimento nos próximos 14 dias.</Typography>
+          <Typography color="text.secondary">Nada agendado nos próximos 14 dias.</Typography>
         </Paper>
       )}
 
@@ -68,7 +69,7 @@ export default async function MinhaAgendaPage() {
                           {formatSalonTime(appt.startAt)} · {appt.service.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {appt.client.name} · {appt.service.durationMinutes} min
+                          {appt.client.name} · {appt.service.durationMinutes} min{appt.asset ? ` · ${assetSummary(appt.asset)}` : ""}
                         </Typography>
                       </Box>
                       <Chip size="small" color={status.color} label={status.label} />

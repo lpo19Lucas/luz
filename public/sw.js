@@ -1,4 +1,4 @@
-/* Service worker da Luz (PWA — Fase E). Um só, escopo "/", pros dois apps
+/* Service worker da DLJ Innovations (PWA — Fase E). Um só, escopo "/", pros dois apps
  * (painel do dono/profissional e app do estabelecimento pro cliente).
  *
  * - Navegação: sempre rede primeiro (agenda tem que estar atualizada); sem
@@ -6,7 +6,7 @@
  * - Push: mostra a notificação; o clique abre/foca a URL que veio no payload.
  *
  * Mudou este arquivo? Suba VERSION pra forçar a troca do cache offline. */
-const VERSION = "luz-sw-v1";
+const VERSION = "dlj-sw-v1";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -33,9 +33,9 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (e) {
-    data = { title: "Luz", body: event.data ? event.data.text() : "" };
+    data = { title: "DLJ Innovations", body: event.data ? event.data.text() : "" };
   }
-  const title = data.title || "Luz";
+  const title = data.title || "DLJ Innovations";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",

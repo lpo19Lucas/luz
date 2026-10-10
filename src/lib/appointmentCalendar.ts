@@ -12,6 +12,7 @@ export async function getCalendarLinksForAppointment(appointmentId: string) {
         select: {
           name: true,
           slug: true,
+          segment: true,
           whatsappPhone: true,
           addressStreet: true,
           addressNumber: true,

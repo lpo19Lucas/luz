@@ -22,15 +22,24 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(getAppUrl()),
   title: {
-    default: "Luz — Agendamento online para salões e barbearias",
-    template: "%s · Luz",
+    default: "DLJ Innovations — Agendamento online para negócios de serviços",
+    template: "%s · DLJ Innovations",
   },
-  description: "Plataforma de agendamento para salões e barbearias",
+  description: "Plataforma de agendamento online para barbearias, salões, estúdios, clínicas, aulas e mais",
 };
+
+const INSTALL_PROMPT_CAPTURE = `window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__luzInstallPrompt=e;window.dispatchEvent(new Event("luz:installprompt"));});window.addEventListener("appinstalled",function(){window.__luzInstallPrompt=null;window.dispatchEvent(new Event("luz:installprompt"));});`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${fraunces.variable} ${inter.variable}`}>
+      <head>
+        {/* PWA: o Chrome avisa que dá pra instalar (beforeinstallprompt) uma
+            vez só, logo no carregamento — antes do React montar o botão (que
+            no celular fica num menu que nem existe até ser aberto). Guarda o
+            aviso aqui pro InstallAppPrompt usar quando aparecer. */}
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_PROMPT_CAPTURE }} />
+      </head>
       <body>
         <ThemeRegistry>{children}</ThemeRegistry>
         <PwaRegister />

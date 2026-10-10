@@ -2,7 +2,7 @@
 
 // "Ativar notificações neste aparelho" (PWA — Fase E2). Pede a permissão do
 // navegador só quando a pessoa toca no botão (nunca ao abrir a página), se
-// inscreve no serviço de push e registra o aparelho na Luz:
+// inscreve no serviço de push e registra o aparelho na DLJ Innovations:
 // - dono/profissional: sem accessToken (usa a sessão);
 // - cliente: com o accessToken do agendamento.
 // No iPhone o push só existe com o app instalado — aí mostra o aviso de
@@ -122,7 +122,7 @@ export default function EnableNotifications({
     }
     if (state !== "off") return null;
     return (
-      <Button onClick={enable} disabled={busy} size="small" fullWidth sx={{ color: "#D4AF37", justifyContent: "flex-start", px: 1 }}>
+      <Button onClick={enable} disabled={busy} size="small" fullWidth sx={{ color: "#3AA6FF", justifyContent: "flex-start", px: 1 }}>
         🔔 Ativar notificações
       </Button>
     );

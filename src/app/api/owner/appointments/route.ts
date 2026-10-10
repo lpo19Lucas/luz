@@ -20,6 +20,7 @@ interface Body {
   clientPhone: string;
   startAt: string;
   wantsToPayNow: boolean;
+  asset?: { name?: string; size?: string; detail?: string };
 }
 
 export async function POST(req: NextRequest) {
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
       wantsToPayNow: body.wantsToPayNow,
       source: "OWNER",
       actor: "OWNER",
+      asset: body.asset,
     });
 
     revalidatePath("/agenda");

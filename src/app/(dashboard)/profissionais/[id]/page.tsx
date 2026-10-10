@@ -8,6 +8,7 @@ import { AvailabilityFields } from "../AvailabilityFields";
 import ImageUploadField from "../../ImageUploadField";
 import ProfessionalAccess from "./ProfessionalAccess";
 import { storedImageUrl } from "@/lib/storedImages";
+import { getSegment, cap, businessOf, grammar } from "@/lib/segments";
 
 export default async function EditarProfissionalPage({
   params,
@@ -16,6 +17,8 @@ export default async function EditarProfissionalPage({
 }) {
   const { id } = await params;
   const salon = await getCurrentSalon();
+  const vocab = getSegment(salon.segment).vocab;
+  const apptG = grammar(vocab.appointmentGender);
 
   const professional = await prisma.professional.findFirst({
     where: { id, salonId: salon.id },
@@ -32,7 +35,7 @@ export default async function EditarProfissionalPage({
   return (
     <Box>
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
-        Editar profissional
+        Editar {vocab.professional}
       </Typography>
 
       <Paper elevation={1} sx={{ p: 2.5, maxWidth: 520 }}>
@@ -59,6 +62,7 @@ export default async function EditarProfissionalPage({
             label="Ativo (aparece na agenda de agendamento pública)"
           />
           <AvailabilityFields
+            professionalWord={vocab.professional}
             services={services}
             existingAvailability={professional.availability}
             existingServiceIds={professional.services.map((s) => s.serviceId)}
@@ -77,6 +81,7 @@ export default async function EditarProfissionalPage({
       <ProfessionalAccess
         professionalId={professional.id}
         professionalName={professional.name}
+        professionalWord={vocab.professional}
         phone={professional.phone}
         access={
           professional.user

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { AssetKind } from "@prisma/client";
+import AssetFields, { EMPTY_ASSET, type AssetFormValue } from "@/components/AssetFields";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -16,6 +18,7 @@ import {
   ToggleButtonGroup,
   ToggleButton,
 } from "@mui/material";
+import { cap, getSegment } from "@/lib/segments";
 
 type Professional = { id: string; name: string; serviceIds: string[] };
 type Service = { id: string; name: string; durationMinutes: number; priceCents: number };
@@ -34,14 +37,19 @@ export default function NewAppointmentForm({
   services,
   initialProfessionalId,
   initialDate,
+  assetKind = null,
+  segment,
 }: {
   salonSlug: string;
   professionals: Professional[];
   services: Service[];
   initialProfessionalId?: string;
   initialDate?: string;
+  assetKind?: AssetKind | null;
+  segment: string;
 }) {
   const router = useRouter();
+  const { vocab } = getSegment(segment);
 
   const [professionalId, setProfessionalId] = useState(
     initialProfessionalId && professionals.some((p) => p.id === initialProfessionalId)
@@ -59,6 +67,7 @@ export default function NewAppointmentForm({
 
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [asset, setAsset] = useState<AssetFormValue>(EMPTY_ASSET);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -109,6 +118,7 @@ export default function NewAppointmentForm({
           clientPhone,
           startAt: startAtISO,
           wantsToPayNow: false,
+          asset: assetKind ? asset : undefined,
         }),
       });
       const data = await res.json();
@@ -128,7 +138,7 @@ export default function NewAppointmentForm({
       <Stack spacing={2.5}>
         <TextField
           select
-          label="Profissional"
+          label={cap(vocab.professional)}
           size="small"
           value={professionalId}
           onChange={(e) => setProfessionalId(e.target.value)}
@@ -180,7 +190,7 @@ export default function NewAppointmentForm({
               {loadingSlots && <CircularProgress size={20} />}
               {!loadingSlots && slots.length === 0 && (
                 <Typography variant="body2" color="text.secondary">
-                  Nenhum horário livre nesse dia pra esse profissional/serviço.
+                  Nenhum horário livre nesse dia para {vocab.professional === "box" ? "esse" : "esse"} {vocab.professional}/serviço.
                 </Typography>
               )}
               <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
@@ -208,25 +218,26 @@ export default function NewAppointmentForm({
               />
               <Typography variant="caption" color="text.secondary">
                 O encaixe não respeita a disponibilidade cadastrada — só checa se o
-                profissional já tem outro agendamento nesse horário.
+                {vocab.professional} já tem outro agendamento nesse horário.
               </Typography>
             </Stack>
           )}
         </Box>
 
         <TextField
-          label="Nome do cliente"
+          label={`Nome do ${vocab.client}`}
           size="small"
           value={clientName}
           onChange={(e) => setClientName(e.target.value)}
         />
         <TextField
-          label="Telefone do cliente"
+          label={`Telefone do ${vocab.client}`}
           size="small"
           placeholder="(11) 99999-9999"
           value={clientPhone}
           onChange={(e) => setClientPhone(e.target.value)}
         />
+        {assetKind && <AssetFields kind={assetKind} value={asset} onChange={setAsset} required={false} />}
 
         {submitError && <Alert severity="error">{submitError}</Alert>}
 

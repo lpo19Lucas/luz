@@ -1,3 +1,4 @@
+import { isDiscreetSalon } from "@/lib/discreet";
 import { whatsappLink } from "@/lib/phone";
 import { manageAppointmentUrl } from "@/lib/calendarLinks";
 import { formatSalonDate, formatSalonTime } from "@/lib/timezone";
@@ -15,13 +16,15 @@ export function whatsappReminderText(params: {
   startAt: Date;
   manageUrl: string;
   askConfirmation: boolean;
+  /** Modo discreto: sem serviço nem profissional na mensagem. */
+  discreet?: boolean;
 }) {
   const firstName = params.clientName.trim().split(/\s+/)[0] ?? params.clientName;
   const when = `${formatSalonDate(params.startAt, { weekday: "long", day: "2-digit", month: "2-digit" })} às ${formatSalonTime(params.startAt)}`;
   const action = params.askConfirmation
     ? `Pode confirmar sua presença por aqui? ${params.manageUrl}`
     : `Se precisar remarcar ou cancelar: ${params.manageUrl}`;
-  return `Olá, ${firstName}! Passando para lembrar do seu ${params.serviceName} com ${params.professionalName} no ${params.salonName}, ${when}. ${action}`;
+  return `Olá, ${firstName}! Passando para lembrar ${params.discreet ? "do seu horário" : `do seu ${params.serviceName} com ${params.professionalName}`} no ${params.salonName}, ${when}. ${action}`;
 }
 
 export function whatsappReminderLink(appt: {
@@ -31,7 +34,7 @@ export function whatsappReminderLink(appt: {
   client: { name: string; phone: string };
   service: { name: string };
   professionalName: string;
-  salon: { name: string; slug: string };
+  salon: { name: string; slug: string; segment?: string | null };
 }) {
   return whatsappLink(
     appt.client.phone,
@@ -43,6 +46,7 @@ export function whatsappReminderLink(appt: {
       startAt: appt.startAt,
       manageUrl: manageAppointmentUrl(appt.salon.slug, appt.accessToken),
       askConfirmation: appt.status === "AWAITING_CONFIRMATION",
+      discreet: isDiscreetSalon(appt.salon),
     })
   );
 }
