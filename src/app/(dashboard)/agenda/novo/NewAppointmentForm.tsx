@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { AssetKind } from "@prisma/client";
+import AssetFields, { EMPTY_ASSET, type AssetFormValue } from "@/components/AssetFields";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -34,12 +36,14 @@ export default function NewAppointmentForm({
   services,
   initialProfessionalId,
   initialDate,
+  assetKind = null,
 }: {
   salonSlug: string;
   professionals: Professional[];
   services: Service[];
   initialProfessionalId?: string;
   initialDate?: string;
+  assetKind?: AssetKind | null;
 }) {
   const router = useRouter();
 
@@ -59,6 +63,7 @@ export default function NewAppointmentForm({
 
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
+  const [asset, setAsset] = useState<AssetFormValue>(EMPTY_ASSET);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -109,6 +114,7 @@ export default function NewAppointmentForm({
           clientPhone,
           startAt: startAtISO,
           wantsToPayNow: false,
+          asset: assetKind ? asset : undefined,
         }),
       });
       const data = await res.json();
@@ -227,6 +233,7 @@ export default function NewAppointmentForm({
           value={clientPhone}
           onChange={(e) => setClientPhone(e.target.value)}
         />
+        {assetKind && <AssetFields kind={assetKind} value={asset} onChange={setAsset} required={false} />}
 
         {submitError && <Alert severity="error">{submitError}</Alert>}
 

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import { AWAITING_OUTCOME_STATUSES } from "@/lib/appointmentOutcome";
+import { appointmentPriceCents } from "@/lib/clientAssets";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -37,7 +38,7 @@ export default async function MetricasPage() {
   const totalPastCount = completed.length + noShowCount;
   const noShowRate = totalPastCount > 0 ? (noShowCount / totalPastCount) * 100 : 0;
 
-  const totalRevenueCents = completed.reduce((sum, a) => sum + a.service.priceCents, 0);
+  const totalRevenueCents = completed.reduce((sum, a) => sum + appointmentPriceCents(a), 0);
   const ticketMedioCents = completed.length > 0 ? totalRevenueCents / completed.length : 0;
 
   const revenueByProfessional = new Map<string, { name: string; cents: number }>();
@@ -46,7 +47,7 @@ export default async function MetricasPage() {
       name: appt.professional.name,
       cents: 0,
     };
-    entry.cents += appt.service.priceCents;
+    entry.cents += appointmentPriceCents(appt);
     revenueByProfessional.set(appt.professionalId, entry);
   }
   const revenueRows = [...revenueByProfessional.values()].sort((a, b) => b.cents - a.cents);

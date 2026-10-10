@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { salonMidnightUTC, salonWeekday } from "@/lib/timezone";
+import { appointmentPriceCents } from "@/lib/clientAssets";
 
 export interface AgendaKpis {
   scheduledCount: number; // agendados, não cancelados
@@ -44,8 +45,8 @@ export async function getAgendaKpis(
   const completed = appointments.filter((a) => a.status === "COMPLETED");
   const noShow = appointments.filter((a) => a.status === "NO_SHOW");
 
-  const expectedRevenueCents = nonCancelled.reduce((sum, a) => sum + a.service.priceCents, 0);
-  const realizedRevenueCents = completed.reduce((sum, a) => sum + a.service.priceCents, 0);
+  const expectedRevenueCents = nonCancelled.reduce((sum, a) => sum + appointmentPriceCents(a), 0);
+  const realizedRevenueCents = completed.reduce((sum, a) => sum + appointmentPriceCents(a), 0);
   const occupiedMinutes = nonCancelled.reduce((sum, a) => sum + a.service.durationMinutes, 0);
 
   const availabilities = await prisma.availability.findMany({

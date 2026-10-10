@@ -21,6 +21,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ acc
         select: {
           name: true,
           slug: true,
+          segment: true,
           whatsappPhone: true,
           addressStreet: true,
           addressNumber: true,

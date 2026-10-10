@@ -25,12 +25,22 @@ import {
   addSavedAppointmentToken,
 } from "@/lib/clientStorage";
 import AddToCalendarButtons, { type CalendarLinks } from "./AddToCalendarButtons";
+import type { AssetKind, AssetSize } from "@prisma/client";
+import AssetFields, { EMPTY_ASSET, type AssetFormValue } from "@/components/AssetFields";
+import { priceForSize } from "@/lib/clientAssets";
 import InstallAppPrompt from "../../InstallAppPrompt";
 import EnableNotifications from "../../EnableNotifications";
 
 type Professional = { id: string; name: string; photoUrl: string | null; serviceIds: string[] };
-type Service = { id: string; name: string; durationMinutes: number; priceCents: number; imageUrl: string | null };
-type SalonInfo = { name: string; professionals: Professional[]; services: Service[] };
+type Service = {
+  id: string;
+  name: string;
+  durationMinutes: number;
+  priceCents: number;
+  sizePrices?: Partial<Record<AssetSize, number>>;
+  imageUrl: string | null;
+};
+type SalonInfo = { name: string; professionals: Professional[]; services: Service[]; assetKind?: AssetKind | null };
 
 type MyAppointment = {
   accessToken: string;
@@ -50,6 +60,14 @@ const STATUS_LABEL: Record<string, string> = {
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Com ficha de porte: o preço do porte escolhido, ou "a partir de" o menor preço enquanto não escolheu. */
+function servicePriceLabel(service: Service, size: AssetSize | null) {
+  const prices = Object.values(service.sizePrices ?? {});
+  if (prices.length === 0) return formatPrice(service.priceCents);
+  if (size) return formatPrice(priceForSize(service, size));
+  return `a partir de ${formatPrice(Math.min(service.priceCents, ...prices))}`;
 }
 
 function todayISODate() {
@@ -79,6 +97,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
 
   const [usablePackage, setUsablePackage] = useState<{ id: string; name: string } | null>(null);
   const [usePackage, setUsePackage] = useState(false);
+  const [asset, setAsset] = useState<AssetFormValue>(EMPTY_ASSET);
 
   // Cache local: pré-preenche com o nome/telefone da última vez que esse
   // navegador agendou nesse salão, e recupera os links dos agendamentos já
@@ -171,6 +190,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
           startAt: selectedSlot,
           wantsToPayNow: false,
           usePackageId: usePackage && usablePackage ? usablePackage.id : undefined,
+          asset: salon?.assetKind ? asset : undefined,
         }),
       });
       const data = await res.json();
@@ -386,7 +406,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
                     </Box>
                   </Box>
                   <Typography sx={{ fontWeight: 700, color: "primary.main" }}>
-                    {formatPrice(s.priceCents)}
+                    {servicePriceLabel(s, asset.size || null)}
                   </Typography>
                 </Paper>
               );
@@ -448,6 +468,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
               onChange={(e) => setClientPhone(e.target.value)}
               fullWidth
             />
+            {salon.assetKind && <AssetFields kind={salon.assetKind} value={asset} onChange={setAsset} />}
             {usablePackage && (
               <FormControlLabel
                 control={<Checkbox checked={usePackage} onChange={(e) => setUsePackage(e.target.checked)} />}
@@ -462,7 +483,7 @@ export default function BookingClient({ salonSlug }: { salonSlug: string }) {
             <Button
               variant="contained"
               size="large"
-              disabled={!selectedSlot || !clientName || !clientPhone || submitting}
+              disabled={!selectedSlot || !clientName || !clientPhone || submitting || Boolean(salon.assetKind && (!asset.name.trim() || !asset.size))}
               onClick={handleSubmit}
               sx={{
                 bgcolor: "secondary.main",

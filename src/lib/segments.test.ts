@@ -30,27 +30,24 @@ describe("segmentos", () => {
     for (const word of Object.values(seg.vocab)) expect(word).toBeTruthy();
   });
 
-  it("saúde (onda 3) fica fechada e com modo discreto; podóloga usa modo discreto mas está liberada", () => {
+  it("saúde (onda 3) está aberta, sempre em modo discreto; podóloga também", () => {
     for (const slug of ["psicologo", "fisioterapeuta", "dentista", "medico"] as const) {
       expect(SEGMENTS[slug].wave).toBe(3);
-      expect(SEGMENTS[slug].available).toBe(false);
+      expect(SEGMENTS[slug].available).toBe(true);
       expect(SEGMENTS[slug].features.discreet).toBe(true);
     }
-    expect(SEGMENTS.podologa.available).toBe(true);
     expect(SEGMENTS.podologa.features.discreet).toBe(true);
   });
 
-  it("segmentos que dependem de ficha extra ficam fechados até a S4", () => {
+  it("pet shop e lava-jato usam ficha (pet / veículo) e estão abertos", () => {
     expect(SEGMENTS["pet-shop"].features.clientProfile).toBe("pet");
     expect(SEGMENTS["lava-jato"].features.clientProfile).toBe("vehicle");
-    expect(SEGMENTS["pet-shop"].available).toBe(false);
-    expect(SEGMENTS["lava-jato"].available).toBe(false);
+    expect(SEGMENTS["pet-shop"].available).toBe(true);
+    expect(SEGMENTS["lava-jato"].available).toBe(true);
   });
 
-  it("availableSegments lista só os liberados, e a onda 1 inteira está nela", () => {
-    const slugs = availableSegments().map((s) => s.slug);
-    expect(slugs).toHaveLength(12);
-    for (const seg of Object.values(SEGMENTS).filter((s) => s.wave === 1)) expect(slugs).toContain(seg.slug);
+  it("os 18 segmentos estão disponíveis", () => {
+    expect(availableSegments()).toHaveLength(18);
   });
 
   it("getSegment cai em barbearia para valor desconhecido", () => {

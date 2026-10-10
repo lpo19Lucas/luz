@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { storedImageUrl } from "@/lib/storedImages";
+import { assetKindForSalon, parseSizePrices } from "@/lib/clientAssets";
 
 /**
  * GET /api/salons/:salonSlug
@@ -33,6 +34,9 @@ export async function GET(
     id: salon.id,
     name: salon.name,
     slug: salon.slug,
+    // Pet shop/lava-jato: tipo de ficha pedida no agendamento (null = sem ficha).
+    assetKind: assetKindForSalon(salon),
+    segment: salon.segment,
     professionals: salon.professionals.map((p) => ({
       id: p.id,
       name: p.name,
@@ -44,6 +48,7 @@ export async function GET(
       name: s.name,
       durationMinutes: s.durationMinutes,
       priceCents: s.priceCents,
+      sizePrices: parseSizePrices(s.sizePricesJson),
       imageUrl: storedImageUrl(s.imageId),
     })),
   });

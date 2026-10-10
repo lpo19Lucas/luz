@@ -8,6 +8,7 @@
  * Calendar/Outlook substituírem o evento antigo ao abrir o arquivo novo.
  */
 import { absoluteUrl } from "@/lib/appUrl";
+import { isDiscreetSalon } from "@/lib/discreet";
 import { formatSalonAddress, type SalonAddress } from "@/lib/salonAddress";
 
 export type CalendarEvent = {
@@ -31,7 +32,7 @@ type AppointmentForCalendar = {
   rescheduledCount: number;
   service: { name: string };
   professional: { name: string };
-  salon: SalonAddress & { name: string; slug: string; whatsappPhone: string | null };
+  salon: SalonAddress & { name: string; slug: string; whatsappPhone: string | null; segment?: string | null };
 };
 
 export function manageAppointmentUrl(salonSlug: string, accessToken: string) {
@@ -41,15 +42,17 @@ export function manageAppointmentUrl(salonSlug: string, accessToken: string) {
 export function appointmentCalendarEvent(appt: AppointmentForCalendar): CalendarEvent {
   const url = manageAppointmentUrl(appt.salon.slug, appt.accessToken);
   const address = formatSalonAddress(appt.salon);
+  // Modo discreto: o evento fica na agenda do celular — sem serviço nem profissional.
+  const discreet = isDiscreetSalon(appt.salon);
   const lines = [
-    `${appt.service.name} com ${appt.professional.name} — ${appt.salon.name}.`,
+    discreet ? `Horário em ${appt.salon.name}.` : `${appt.service.name} com ${appt.professional.name} — ${appt.salon.name}.`,
     "",
     `Para confirmar presença, remarcar ou cancelar: ${url}`,
   ];
   if (appt.salon.whatsappPhone) lines.push(`WhatsApp do salão: ${appt.salon.whatsappPhone}`);
   return {
     uid: `${appt.id}@luz-agendamento`,
-    title: `${appt.service.name} — ${appt.salon.name}`,
+    title: discreet ? `Horário — ${appt.salon.name}` : `${appt.service.name} — ${appt.salon.name}`,
     description: lines.join("\n"),
     location: address ? `${appt.salon.name}, ${address}` : appt.salon.name,
     startAt: appt.startAt,

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { getCurrentSalon } from "@/lib/currentSalon";
 import { prisma } from "@/lib/prisma";
 import NewAppointmentForm from "./NewAppointmentForm";
+import { assetKindForSalon } from "@/lib/clientAssets";
 
 export default async function NovoAgendamentoPage({
   searchParams,
@@ -55,6 +56,7 @@ export default async function NovoAgendamentoPage({
           }))}
           initialProfessionalId={professionalId}
           initialDate={date}
+          assetKind={assetKindForSalon(salon)}
         />
       )}
     </Box>

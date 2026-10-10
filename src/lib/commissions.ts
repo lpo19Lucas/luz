@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { appointmentPriceCents } from "@/lib/clientAssets";
 
 export interface CommissionRow {
   professionalId: string;
@@ -39,9 +40,9 @@ export async function getCommissionReport(params: { salonId: string; from?: Date
       commissionCents: appt.professional.commissionPercent !== null ? 0 : null,
     };
     row.appointmentsCount += 1;
-    row.totalRevenueCents += appt.service.priceCents;
+    row.totalRevenueCents += appointmentPriceCents(appt);
     if (row.commissionCents !== null) {
-      row.commissionCents += Math.round(appt.service.priceCents * (appt.professional.commissionPercent! / 100));
+      row.commissionCents += Math.round(appointmentPriceCents(appt) * (appt.professional.commissionPercent! / 100));
     }
     byProfessional.set(appt.professionalId, row);
   }

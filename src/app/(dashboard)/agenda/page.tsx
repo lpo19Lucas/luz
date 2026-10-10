@@ -6,6 +6,7 @@ import { getCurrentSalon } from "@/lib/currentSalon";
 import { setAppointmentOutcomeAction, cancelAppointmentOwnerAction } from "@/lib/actions/appointment";
 import { prisma } from "@/lib/prisma";
 import { whatsappReminderLink } from "@/lib/whatsappReminder";
+import { assetSummary } from "@/lib/clientAssets";
 import { salonMidnightUTC, salonEndOfDayUTC, salonWeekday, formatSalonDate, formatSalonTime } from "@/lib/timezone";
 import { getAgendaKpis, type AgendaKpis } from "@/lib/agendaKpis";
 
@@ -147,7 +148,7 @@ export default async function AgendaPage({
     include: {
       appointments: {
         where: { startAt: { gte: dayStart, lte: dayEnd } },
-        include: { client: true, service: true },
+        include: { client: true, service: true, asset: true },
         orderBy: { startAt: "asc" },
       },
     },
@@ -245,6 +246,7 @@ export default async function AgendaPage({
                   </Typography>
                   <Typography variant="caption" color="text.secondary" display="block">
                     {appt.client.name}
+                    {appt.asset ? ` · ${assetSummary(appt.asset)}` : ""}
                   </Typography>
                   <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.5 }}>
                     <Chip

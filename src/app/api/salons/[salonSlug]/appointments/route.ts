@@ -20,6 +20,7 @@ interface CreateAppointmentBody {
   startAt: string; // ISO string
   wantsToPayNow: boolean;
   usePackageId?: string;
+  asset?: { name?: string; size?: string; detail?: string };
 }
 
 export async function POST(
@@ -41,6 +42,7 @@ export async function POST(
       source: "ONLINE",
       actor: "CLIENT",
       usePackageId: body.usePackageId,
+      asset: body.asset,
     });
 
     return NextResponse.json(

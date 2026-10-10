@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { isDiscreetSalon } from "@/lib/discreet";
 import { dispatchInBackground, notifyOwnerAboutReview } from "@/lib/staffNotifications";
 
-export type ReviewErrorCode = "NOT_FOUND" | "NOT_COMPLETED" | "ALREADY_REVIEWED" | "INVALID_RATING";
+export type ReviewErrorCode = "NOT_FOUND" | "NOT_COMPLETED" | "ALREADY_REVIEWED" | "INVALID_RATING" | "NOT_ALLOWED";
 
 /** Erro de negócio do fluxo de avaliação — mesmo formato de BookingError/PackageError. */
 export class ReviewError extends Error {
@@ -22,9 +23,11 @@ export async function submitReviewByToken(params: { accessToken: string; rating:
 
   const appointment = await prisma.appointment.findUnique({
     where: { accessToken: params.accessToken },
-    include: { review: true },
+    include: { review: true, salon: { select: { segment: true } } },
   });
   if (!appointment) throw new ReviewError("NOT_FOUND");
+  // Modo discreto: avaliação pública exporia quem é cliente (src/lib/discreet.ts).
+  if (isDiscreetSalon(appointment.salon)) throw new ReviewError("NOT_ALLOWED");
   if (appointment.status !== "COMPLETED") throw new ReviewError("NOT_COMPLETED");
   if (appointment.review) throw new ReviewError("ALREADY_REVIEWED");
 
@@ -49,6 +52,9 @@ export interface PublicReviewsResult {
 
 /** Avaliações não ocultas, pra vitrine pública (social proof) e pro JSON-LD. */
 export async function getPublicReviews(salonId: string, limit = 20): Promise<PublicReviewsResult> {
+  const salon = await prisma.salon.findUnique({ where: { id: salonId }, select: { segment: true } });
+  if (salon && isDiscreetSalon(salon)) return { averageRating: null, total: 0, reviews: [] };
+
   const reviews = await prisma.review.findMany({
     where: { salonId, hiddenByOwner: false },
     include: { client: true },

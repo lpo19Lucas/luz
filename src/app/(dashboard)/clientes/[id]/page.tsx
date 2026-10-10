@@ -15,6 +15,7 @@ import {
   cancelClientPackageAction,
 } from "@/lib/actions/package";
 import { getClientPackages } from "@/lib/packages";
+import { assetSummary } from "@/lib/clientAssets";
 
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -39,7 +40,7 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
     getClientStats(salon.id, client.id),
     prisma.appointment.findMany({
       where: { salonId: salon.id, clientId: client.id },
-      include: { service: true, professional: true },
+      include: { service: true, professional: true, asset: true },
       orderBy: { startAt: "desc" },
       take: 50,
     }),
@@ -236,6 +237,7 @@ export default async function ClienteDetalhePage({ params }: { params: Promise<{
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="body2">
                 {appt.service.name} com {appt.professional.name}
+                {appt.asset ? ` · ${assetSummary(appt.asset)}` : ""}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 {formatSalonDate(appt.startAt, { day: "2-digit", month: "2-digit", year: "numeric" })}{" "}

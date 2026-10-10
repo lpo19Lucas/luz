@@ -96,6 +96,6 @@ export async function getProfessionalAgenda(professionalId: string, days = 14, n
       ],
     },
     orderBy: { startAt: "asc" },
-    include: { service: { select: { name: true, durationMinutes: true } }, client: { select: { name: true, phone: true } } },
+    include: { service: { select: { name: true, durationMinutes: true } }, client: { select: { name: true, phone: true } }, asset: true },
   });
 }

@@ -10,10 +10,11 @@
  * Ondas:
  *  1 — beleza e bem-estar: o que já existe na Luz serve quase sem adaptação.
  *  2 — serviços: o fluxo é o mesmo, mas a "agenda" nem sempre é uma pessoa.
- *  3 — saúde: até o horário marcado é dado sensível (LGPD, art. 11). Só abre
- *      depois do modo discreto e da revisão jurídica.
+ *  3 — saúde: até o horário marcado é dado sensível (LGPD, art. 11). Roda no
+ *      modo discreto (src/lib/discreet.ts). Revisão jurídica dos textos ainda pendente.
  *
- * `available` decide se o segmento aparece no cadastro e tem página de venda.
+ * `available` decide se o segmento aparece no cadastro e tem página de venda
+ * (hoje os 18 estão abertos; segmento novo pode nascer fechado até estar pronto).
  * Os recursos em `features` marcados como "planejado" são só configuração por
  * enquanto — a implementação vem nas etapas S3/S4 do roadmap.
  */
@@ -385,7 +386,7 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
       title: "Agendamento online para podóloga",
       headline: "Agenda da podologia no piloto automático",
       subheadline: "O cliente marca pelo seu link, e a Luz guarda só o necessário: agenda e contato, sem prontuário.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "Privacidade do cliente", body: "A Luz não guarda prontuário nem ficha clínica. O modo discreto para lembretes sem citar o serviço está planejado." }],
+      pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "Privacidade do cliente", body: "A plataforma não guarda prontuário nem ficha clínica, e o modo discreto faz os lembretes dizerem só “seu horário”, sem citar o serviço." }],
       examples: ["Podologia clínica", "Unha encravada", "Pedicure podológica", "Palmilhas", "Reflexologia"],
       faq: [
         { q: "A Luz guarda prontuário?", a: "Não. A Luz cuida da agenda, não do prontuário. Guarde as fichas clínicas no seu sistema próprio." },
@@ -449,31 +450,35 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
   "pet-shop": {
     slug: "pet-shop",
     wave: 2,
-    // Precisa da ficha do pet e do preço por porte (S4) para fazer sentido.
-    available: false,
+    available: true,
     label: "Pet shop (banho e tosa)",
     emoji: "🐶",
     vocab: v("tutor", "tutores", "atendimento", "atendimentos", "banhista", "banhistas", "pet shop", "m"),
     sampleServices: [s("Banho", 60, 60), s("Tosa higiênica", 30, 40), s("Banho e tosa", 120, 100), s("Hidratação de pelagem", 45, 50)],
     schemaType: "PetStore",
-    features: { ...NO_FEATURES, clientProfile: "pet" },
+    features: { ...NO_FEATURES, clientProfile: "pet", returnEveryDays: 21 },
     landing: {
       title: "Agendamento online para pet shop e banho e tosa",
       headline: "Banho e tosa agendado pelo tutor, com a ficha do pet",
-      subheadline: "Nome, porte e raça do pet no agendamento, e preço certo para cada tamanho.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🐾", title: "Preço muda com o porte", body: "Preço por porte e ficha do pet estão em desenvolvimento." }],
+      subheadline:
+        "O tutor informa nome, raça e porte do pet ao marcar, e o preço já aparece certo para o tamanho. Você sabe quem vem antes de ele chegar.",
+      pains: [
+        commonPains.phone,
+        { icon: "🐾", title: "Preço muda com o porte", body: "Cada serviço pode ter um preço para pequeno, médio e grande — o tutor vê o valor certo antes de confirmar." },
+        { ...commonPains.noShow, body: "Confirmação de presença antes do horário e vaga liberada se o tutor não confirmar." },
+      ],
       examples: ["Banho", "Tosa higiênica", "Banho e tosa", "Hidratação", "Corte de unhas"],
       faq: [
-        { q: "Quando abre?", a: "Quando a ficha do pet e o preço por porte estiverem prontos." },
-        { q: "A agenda é por banhista?", a: "Sim, por banhista ou por banheira." },
+        { q: "A ficha do pet fica guardada?", a: "Sim. Na próxima vez o tutor só confere os dados, e você vê o pet na agenda e no histórico do tutor." },
+        { q: "Dá pra cobrar preço diferente por porte?", a: "Dá. Em cada serviço você define o preço de pequeno, médio e grande, e o faturamento já usa o valor do porte." },
+        { q: "A agenda é por banhista ou por banheira?", a: "Cadastre cada banhista (ou cada banheira) como um profissional, com seus horários." },
       ],
     },
   },
   "lava-jato": {
     slug: "lava-jato",
     wave: 2,
-    // Precisa da ficha do veículo e do preço por porte (S4) para fazer sentido.
-    available: false,
+    available: true,
     label: "Lava-jato",
     emoji: "🚗",
     vocab: v("cliente", "clientes", "lavagem", "lavagens", "box", "boxes", "lava-jato", "m"),
@@ -483,20 +488,27 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
     landing: {
       title: "Agendamento online para lava-jato",
       headline: "Seus boxes ocupados na hora certa",
-      subheadline: "O cliente informa modelo e placa, escolhe a lavagem e o horário. A agenda é do box.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🚗", title: "Preço muda com o tamanho do carro", body: "Preço por porte e ficha do veículo estão em desenvolvimento." }],
+      subheadline: "O cliente informa modelo, placa e porte do veículo, escolhe a lavagem e o horário. Cada box tem a sua agenda.",
+      pains: [
+        commonPains.phone,
+        { icon: "🚗", title: "Preço muda com o tamanho do carro", body: "Preço por porte: compacto, sedan/SUV e grande. O cliente vê o valor certo antes de marcar." },
+        { ...commonPains.noShow, title: "Box parado por falta de aviso" },
+      ],
       examples: ["Lavagem simples", "Lavagem completa", "Higienização", "Polimento", "Cristalização"],
       faq: [
-        { q: "Quando abre?", a: "Quando a ficha do veículo e o preço por porte estiverem prontos." },
-        { q: "A agenda é por box?", a: "Sim, cada box funciona como uma agenda." },
+        { q: "A agenda é por box?", a: "Sim. Cadastre cada box como um profissional, com os horários de funcionamento." },
+        { q: "Guarda os dados do veículo?", a: "Sim: modelo, placa e porte ficam na ficha do cliente e aparecem na agenda." },
+        { q: "Posso ter preço diferente por tamanho?", a: "Sim, em cada serviço você define o preço por porte." },
       ],
     },
   },
   // ---------------------------------------------------------------- Onda 3
+  // Saúde: modo discreto ligado (src/lib/discreet.ts). Os textos jurídicos
+  // ainda precisam de revisão de advogado antes de operar comercialmente.
   psicologo: {
     slug: "psicologo",
     wave: 3,
-    available: false,
+    available: true,
     label: "Psicólogo",
     emoji: "🧠",
     vocab: v("paciente", "pacientes", "sessão", "sessões", "profissional", "profissionais", "consultório", "m"),
@@ -506,16 +518,25 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
     landing: {
       title: "Agendamento online para psicólogo",
       headline: "Agenda de sessões com privacidade",
-      subheadline: "Lembretes que não citam o serviço e nenhum dado clínico guardado.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "O horário já é dado sensível", body: "O modo discreto e a revisão de LGPD vêm antes da abertura." }],
+      subheadline:
+        "O paciente marca sozinho e recebe lembretes que não citam o tipo de atendimento. Nenhum dado clínico passa pela plataforma.",
+      pains: [
+        commonPains.phone,
+        { ...commonPains.noShow, title: "Falta em sessão de 50 minutos" },
+        { icon: "🔒", title: "O horário já é um dado sensível", body: "No modo discreto, avisos e eventos de agenda dizem só “seu horário”, sem serviço nem profissional. Não há avaliações públicas." },
+      ],
       examples: ["Sessão individual", "Primeira sessão", "Sessão online"],
-      faq: [{ q: "Quando abre?", a: "Depois do modo discreto e da revisão jurídica de LGPD." }],
+      faq: [
+        { q: "A plataforma guarda prontuário?", a: "Não. Ela cuida só da agenda: nome, telefone e horário. Prontuário e anotações clínicas ficam no seu sistema próprio." },
+        { q: "O lembrete revela que é psicoterapia?", a: "Não. No modo discreto, o aviso diz “seu horário” com dia e hora, sem citar o serviço." },
+        { q: "Respeita as normas do conselho?", a: "A divulgação e o sigilo seguem as normas do seu conselho profissional. Confira com ele o que pode constar na sua página pública." },
+      ],
     },
   },
   fisioterapeuta: {
     slug: "fisioterapeuta",
     wave: 3,
-    available: false,
+    available: true,
     label: "Fisioterapeuta",
     emoji: "🩺",
     vocab: v("paciente", "pacientes", "sessão", "sessões", "profissional", "profissionais", "clínica", "f"),
@@ -525,16 +546,23 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
     landing: {
       title: "Agendamento online para fisioterapeuta",
       headline: "Pacotes de sessões e agenda com privacidade",
-      subheadline: "Controle de pacotes e lembretes discretos.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "O horário já é dado sensível", body: "O modo discreto e a revisão de LGPD vêm antes da abertura." }],
+      subheadline: "Controle quantas sessões o paciente ainda tem, agende cada uma e envie lembretes que não citam o tratamento.",
+      pains: [
+        { icon: "🎁", title: "Perder a conta das sessões", body: "Pacotes com saldo: cada sessão marcada desconta automaticamente." },
+        commonPains.noShow,
+        { icon: "🔒", title: "O horário já é um dado sensível", body: "Avisos discretos, sem serviço nem profissional, e sem avaliações públicas." },
+      ],
       examples: ["Avaliação", "Sessão", "Pacote de sessões"],
-      faq: [{ q: "Quando abre?", a: "Depois do modo discreto e da revisão jurídica de LGPD." }],
+      faq: [
+        { q: "Controla pacote de sessões?", a: "Sim. Você define o pacote, vende ao paciente e o saldo diminui a cada sessão." },
+        { q: "Guarda dados clínicos?", a: "Não. Só agenda e contato. Evolução e prontuário ficam fora da plataforma." },
+      ],
     },
   },
   dentista: {
     slug: "dentista",
     wave: 3,
-    available: false,
+    available: true,
     label: "Dentista",
     emoji: "🦷",
     vocab: v("paciente", "pacientes", "consulta", "consultas", "profissional", "profissionais", "consultório", "m"),
@@ -543,17 +571,24 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
     features: { ...NO_FEATURES, discreet: true, returnEveryDays: 180 },
     landing: {
       title: "Agendamento online para dentista",
-      headline: "Agenda do consultório com privacidade",
-      subheadline: "Lembretes discretos e menos faltas.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "O horário já é dado sensível", body: "O modo discreto e a revisão de LGPD vêm antes da abertura." }],
+      headline: "Agenda do consultório com menos faltas",
+      subheadline: "O paciente marca pelo seu link, confirma presença e recebe lembretes discretos, sem citar o procedimento.",
+      pains: [
+        commonPains.phone,
+        { ...commonPains.noShow, title: "Cadeira vazia por falta de aviso" },
+        { icon: "🔒", title: "O horário já é um dado sensível", body: "Avisos discretos, sem serviço nem profissional, e sem avaliações públicas." },
+      ],
       examples: ["Avaliação", "Limpeza", "Clareamento", "Retorno"],
-      faq: [{ q: "Quando abre?", a: "Depois do modo discreto e da revisão jurídica de LGPD." }],
+      faq: [
+        { q: "O paciente sem convênio consegue marcar?", a: "Sim. O agendamento é por serviço e horário; convênio não é tratado pela plataforma." },
+        { q: "Guarda prontuário ou odontograma?", a: "Não. Só agenda e contato." },
+      ],
     },
   },
   medico: {
     slug: "medico",
     wave: 3,
-    available: false,
+    available: true,
     label: "Médico",
     emoji: "⚕️",
     vocab: v("paciente", "pacientes", "consulta", "consultas", "profissional", "profissionais", "consultório", "m"),
@@ -563,10 +598,17 @@ export const SEGMENTS: Record<SegmentSlug, SegmentConfig> = {
     landing: {
       title: "Agendamento online para médico",
       headline: "Agenda de consultas com privacidade",
-      subheadline: "Lembretes discretos, sem dado clínico na Luz.",
-      pains: [commonPains.phone, commonPains.noShow, { icon: "🔒", title: "O horário já é dado sensível", body: "O modo discreto e a revisão de LGPD vêm antes da abertura." }],
+      subheadline: "Paciente marca sozinho, confirma presença e recebe lembretes discretos. Nenhum dado clínico passa pela plataforma.",
+      pains: [
+        commonPains.phone,
+        commonPains.noShow,
+        { icon: "🔒", title: "O horário já é um dado sensível", body: "Avisos discretos, sem serviço nem profissional, e sem avaliações públicas." },
+      ],
       examples: ["Consulta", "Retorno", "Teleconsulta"],
-      faq: [{ q: "Quando abre?", a: "Depois do modo discreto e da revisão jurídica de LGPD." }],
+      faq: [
+        { q: "A plataforma guarda prontuário?", a: "Não. Ela cuida só da agenda. Prontuário fica no seu sistema, conforme as regras do conselho de medicina." },
+        { q: "O que aparece no lembrete?", a: "Só “seu horário”, com dia, hora e o nome do consultório." },
+      ],
     },
   },
 };
